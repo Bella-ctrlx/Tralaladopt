@@ -1,7 +1,13 @@
 import os
-from flask import Flask, jsonify, request
 from dotenv import load_dotenv
-from supabase import create_client, Client
+from flask import Flask, jsonify, redirect, render_template, request, url_for
+from supabase import Client, create_client
+
+from modules.admin import (
+    cambiar_estado_fundacion,
+    obtener_estadisticas_panel,
+    obtener_fundaciones_pendientes,
+)
 
 load_dotenv()
 
@@ -10,60 +16,99 @@ app = Flask(__name__)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
+supabase: Client | None = None
+
 if SUPABASE_URL and SUPABASE_KEY:
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as err:
+        print(f"Advertencia: No se pudo conectar a Supabase en app.py: {err}")
 else:
-    supabase = None
     print("Advertencia: Faltan credenciales de Supabase en el archivo .env")
 
 
-@app.route('/')
+@app.route("/")
 def inicio():
     return jsonify({"mensaje": "Bienvenido al API de Tralaladopt"})
 
 
-@app.route('/registro', methods=['POST'])
+@app.route("/registro", methods=["POST"])
 def registro():
-    datos = request.get_json()
-    email = datos.get('email')
-    password = datos.get('password')
+    if not supabase:
+        return jsonify({"error": "Servicio de base de datos no disponible"}), 500
+
+    datos = request.get_json() or {}
+    email = datos.get("email")
+    password = datos.get("password")
 
     if not email or not password:
         return jsonify({"error": "Por favor, envía email y contraseña"}), 400
 
     try:
-        respuesta = supabase.auth.sign_up({
-            "email": email,
-            "password": password
-        })
-        return jsonify({
-            "mensaje": "¡Usuario registrado con éxito!", 
-            "usuario": respuesta.user.email
-        }), 201
+        respuesta = supabase.auth.sign_up(
+            {"email": email, "password": password}
+        )
+        return (
+            jsonify(
+                {
+                    "mensaje": "¡Usuario registrado con éxito!",
+                    "usuario": respuesta.user.email if respuesta.user else None,
+                }
+            ),
+            201,
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
 
-@app.route('/login', methods=['POST'])
+@app.route("/login", methods=["POST"])
 def login():
-    datos = request.get_json()
-    email = datos.get('email')
-    password = datos.get('password')
+    if not supabase:
+        return jsonify({"error": "Servicio de base de datos no disponible"}), 500
+
+    datos = request.get_json() or {}
+    email = datos.get("email")
+    password = datos.get("password")
 
     if not email or not password:
         return jsonify({"error": "Por favor, envía email y contraseña"}), 400
 
     try:
-        respuesta = supabase.auth.sign_in_with_password({
-            "email": email,
-            "password": password
-        })
-        return jsonify({
-            "mensaje": "¡Inicio de sesión exitoso!",
-            "token": respuesta.session.access_token
-        }), 200
-    except Exception as e:
+        respuesta = supabase.auth.sign_in_with_password(
+            {"email": email, "password": password}
+        )
+        token = (
+            respuesta.session.access_token if respuesta.session else None
+        )
+        return (
+            jsonify(
+                {
+                    "mensaje": "¡Inicio de sesión exitoso!",
+                    "token": token,
+                }
+            ),
+            200,
+        )
+    except Exception:
         return jsonify({"error": "Correo o contraseña incorrectos"}), 401
 
-if __name__ == '__main__':
+
+@app.route("/admin")
+def admin_dashboard():
+    stats = obtener_estadisticas_panel()
+    fundaciones = obtener_fundaciones_pendientes()
+    return render_template(
+        "admin_dashboard.html", stats=stats, fundaciones=fundaciones
+    )
+
+
+@app.route("/admin/aprobar-fundacion/<id_fundacion>", methods=["POST"])
+def aprobar_fundacion(id_fundacion):
+    cambiar_estado_fundacion(id_fundacion, "activo")
+    return redirect(url_for("admin_dashboard"))
+
+
+if __name__ == "__main__":
     app.run(debug=True)
+
+    
