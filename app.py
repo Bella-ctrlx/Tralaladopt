@@ -1,12 +1,12 @@
 import os
-from flask import Flask, jsonify, request
 from dotenv import load_dotenv
-from supabase import create_client, Client
-from flask import Flask, render_template, redirect, url_for
+from flask import Flask, jsonify, redirect, render_template, request, url_for
+from supabase import Client, create_client
+
 from modules.admin import (
+    cambiar_estado_fundacion,
     obtener_estadisticas_panel,
     obtener_fundaciones_pendientes,
-    cambiar_estado_fundacion,
 )
 
 load_dotenv()
@@ -23,53 +23,62 @@ else:
     print("Advertencia: Faltan credenciales de Supabase en el archivo .env")
 
 
-@app.route('/')
+@app.route("/")
 def inicio():
     return jsonify({"mensaje": "Bienvenido al API de Tralaladopt"})
 
 
-@app.route('/registro', methods=['POST'])
+@app.route("/registro", methods=["POST"])
 def registro():
     datos = request.get_json()
-    email = datos.get('email')
-    password = datos.get('password')
+    email = datos.get("email")
+    password = datos.get("password")
 
     if not email or not password:
         return jsonify({"error": "Por favor, envía email y contraseña"}), 400
 
     try:
-        respuesta = supabase.auth.sign_up({
-            "email": email,
-            "password": password
-        })
-        return jsonify({
-            "mensaje": "¡Usuario registrado con éxito!", 
-            "usuario": respuesta.user.email
-        }), 201
+        respuesta = supabase.auth.sign_up(
+            {"email": email, "password": password}
+        )
+        return (
+            jsonify(
+                {
+                    "mensaje": "¡Usuario registrado con éxito!",
+                    "usuario": respuesta.user.email,
+                }
+            ),
+            201,
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
 
-@app.route('/login', methods=['POST'])
+@app.route("/login", methods=["POST"])
 def login():
     datos = request.get_json()
-    email = datos.get('email')
-    password = datos.get('password')
+    email = datos.get("email")
+    password = datos.get("password")
 
     if not email or not password:
         return jsonify({"error": "Por favor, envía email y contraseña"}), 400
 
     try:
-        respuesta = supabase.auth.sign_in_with_password({
-            "email": email,
-            "password": password
-        })
-        return jsonify({
-            "mensaje": "¡Inicio de sesión exitoso!",
-            "token": respuesta.session.access_token
-        }), 200
-    except Exception as e:
+        respuesta = supabase.auth.sign_in_with_password(
+            {"email": email, "password": password}
+        )
+        return (
+            jsonify(
+                {
+                    "mensaje": "¡Inicio de sesión exitoso!",
+                    "token": respuesta.session.access_token,
+                }
+            ),
+            200,
+        )
+    except Exception:
         return jsonify({"error": "Correo o contraseña incorrectos"}), 401
+
 
 @app.route("/admin")
 def admin_dashboard():
@@ -84,25 +93,9 @@ def admin_dashboard():
 def aprobar_fundacion(id_fundacion):
     cambiar_estado_fundacion(id_fundacion, "activo")
     return redirect(url_for("admin_dashboard"))
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
     
-
-
-
-
-
-
-if __name__ == '__main__':
-    app.run(debug=True) 
-
-
-
-
-
-
-
-
-
-
-
-
-
