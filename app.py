@@ -2,6 +2,12 @@ import os
 from flask import Flask, jsonify, request
 from dotenv import load_dotenv
 from supabase import create_client, Client
+from flask import Flask, render_template, redirect, url_for
+from modules.admin import (
+    obtener_estadisticas_panel,
+    obtener_fundaciones_pendientes,
+    cambiar_estado_fundacion,
+)
 
 load_dotenv()
 
@@ -65,5 +71,23 @@ def login():
     except Exception as e:
         return jsonify({"error": "Correo o contraseña incorrectos"}), 401
 
+@app.route("/admin")
+def admin_dashboard():
+    stats = obtener_estadisticas_panel()
+    fundaciones = obtener_fundaciones_pendientes()
+    return render_template(
+        "admin_dashboard.html", stats=stats, fundaciones=fundaciones
+    )
+
+
+@app.route("/admin/aprobar-fundacion/<id_fundacion>", methods=["POST"])
+def aprobar_fundacion(id_fundacion):
+    cambiar_estado_fundacion(id_fundacion, "activo")
+    return redirect(url_for("admin_dashboard"))
+    
+
 if __name__ == '__main__':
     app.run(debug=True)
+
+
+

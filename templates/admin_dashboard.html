@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel de Administración - Tralaladopt</title>
+</head>
+<body>
+    <h1>Panel Administrativo</h1>
+
+    <h2>Métricas Generales</h2>
+    <ul>
+        <li><strong>Total Usuarios:</strong> {{ stats.total_usuarios }}</li>
+        <li><strong>Mascotas Registradas:</strong> {{ stats.total_animales }}</li>
+        <li><strong>Solicitudes Pendientes:</strong> {{ stats.solicitudes_pendientes }}</li>
+        <li><strong>Fundaciones por Aprobar:</strong> {{ stats.fundaciones_pendientes }}</li>
+    </ul>
+
+    <hr>
+
+    <h2>Fundaciones Pendientes de Aprobación</h2>
+    {% if fundaciones %}
+        <table border="1" cellpadding="8">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Ubicación</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in fundaciones %}
+                <tr>
+                    <td>{{ f.name }}</td>
+                    <td>{{ f.email }}</td>
+                    <td>{{ f.location }}</td>
+                    <td>
+                        <form method="POST" action="/admin/aprobar-fundacion/{{ f.id }}" style="display:inline;">
+                            <button type="submit">Aprobar Fundación</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay fundaciones pendientes por revisar.</p>
+    {% endif %}
+</body>
+</html>
