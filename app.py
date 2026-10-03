@@ -16,10 +16,14 @@ app = Flask(__name__)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
+supabase: Client | None = None
+
 if SUPABASE_URL and SUPABASE_KEY:
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as err:
+        print(f"Advertencia: No se pudo conectar a Supabase en app.py: {err}")
 else:
-    supabase = None
     print("Advertencia: Faltan credenciales de Supabase en el archivo .env")
 
 
@@ -30,7 +34,10 @@ def inicio():
 
 @app.route("/registro", methods=["POST"])
 def registro():
-    datos = request.get_json()
+    if not supabase:
+        return jsonify({"error": "Servicio de base de datos no disponible"}), 500
+
+    datos = request.get_json() or {}
     email = datos.get("email")
     password = datos.get("password")
 
@@ -45,7 +52,7 @@ def registro():
             jsonify(
                 {
                     "mensaje": "¡Usuario registrado con éxito!",
-                    "usuario": respuesta.user.email,
+                    "usuario": respuesta.user.email if respuesta.user else None,
                 }
             ),
             201,
@@ -56,7 +63,10 @@ def registro():
 
 @app.route("/login", methods=["POST"])
 def login():
-    datos = request.get_json()
+    if not supabase:
+        return jsonify({"error": "Servicio de base de datos no disponible"}), 500
+
+    datos = request.get_json() or {}
     email = datos.get("email")
     password = datos.get("password")
 
@@ -67,11 +77,14 @@ def login():
         respuesta = supabase.auth.sign_in_with_password(
             {"email": email, "password": password}
         )
+        token = (
+            respuesta.session.access_token if respuesta.session else None
+        )
         return (
             jsonify(
                 {
                     "mensaje": "¡Inicio de sesión exitoso!",
-                    "token": respuesta.session.access_token,
+                    "token": token,
                 }
             ),
             200,
@@ -97,4 +110,5 @@ def aprobar_fundacion(id_fundacion):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
     

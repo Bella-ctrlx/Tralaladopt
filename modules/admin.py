@@ -1,5 +1,5 @@
-"""
-Módulo de Administración e Integración para Tralaladopt.
+"""Módulo de Administración e Integración para Tralaladopt.
+
 Maneja el panel de control, aprobación de fundaciones y métricas del sistema.
 """
 
@@ -12,16 +12,17 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
+supabase: Client | None = None
+
 if SUPABASE_URL and SUPABASE_KEY:
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-else:
-    supabase = None
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as err:
+        print(f"Advertencia: No se pudo conectar a Supabase: {err}")
 
 
 def obtener_estadisticas_panel():
-    """
-    Obtiene métricas y conteos generales para el panel administrativo.
-    """
+    """Obtiene métricas y conteos generales para el panel administrativo."""
     if not supabase:
         return {
             "total_usuarios": 0,
@@ -76,9 +77,7 @@ def obtener_estadisticas_panel():
 
 
 def obtener_fundaciones_pendientes():
-    """
-    Lista las fundaciones que están esperando aprobación por el administrador.
-    """
+    """Lista las fundaciones que están esperando aprobación."""
     if not supabase:
         return []
 
@@ -97,9 +96,7 @@ def obtener_fundaciones_pendientes():
 
 
 def cambiar_estado_fundacion(fundacion_id: str, nuevo_estado: str):
-    """
-    Aprueba ('activo'), rechaza o suspende una cuenta de fundación.
-    """
+    """Aprueba ('activo'), rechaza o suspende una cuenta de fundación."""
     if not supabase:
         return {"exito": False, "error": "Sin conexión a Supabase"}
 
@@ -118,7 +115,10 @@ def cambiar_estado_fundacion(fundacion_id: str, nuevo_estado: str):
         supabase.table("notifications").insert(
             {
                 "user_id": fundacion_id,
-                "message": f"El estado de tu cuenta de fundación ha sido actualizado a: {nuevo_estado}.",
+                "message": (
+                    "El estado de tu cuenta de fundación ha sido"
+                    f" actualizado a: {nuevo_estado}."
+                ),
                 "type": "admin",
             }
         ).execute()
@@ -126,3 +126,4 @@ def cambiar_estado_fundacion(fundacion_id: str, nuevo_estado: str):
         return {"exito": True, "data": response.data}
     except Exception as e:
         return {"exito": False, "error": str(e)}
+    
