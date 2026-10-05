@@ -8,6 +8,7 @@ from modules.admin import (
     obtener_estadisticas_panel,
     obtener_fundaciones_pendientes,
 )
+from modules.animals import registrar_rutas_animales
 
 load_dotenv()
 
@@ -25,6 +26,8 @@ if SUPABASE_URL and SUPABASE_KEY:
         print(f"Advertencia: No se pudo conectar a Supabase en app.py: {err}")
 else:
     print("Advertencia: Faltan credenciales de Supabase en el archivo .env")
+
+registrar_rutas_animales(app, supabase)
 
 
 @app.route("/")
