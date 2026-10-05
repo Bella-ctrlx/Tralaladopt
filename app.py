@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 from supabase import Client, create_client
+from modules.fundaciones import fundaciones_bp
 
 from modules.admin import (
     cambiar_estado_fundacion,
@@ -12,7 +13,7 @@ from modules.admin import (
 load_dotenv()
 
 app = Flask(__name__)
-
+app.register_blueprint(fundaciones_bp)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 

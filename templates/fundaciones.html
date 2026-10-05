@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fundaciones y donaciones · Tralaladopt</title>
+  <style>
+    :root { --fondo:#f6f8f5; --tinta:#1f2a24; --verde:#2f6f4f; --borde:#cfd8d1; --error:#a8321f; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Georgia, "Times New Roman", serif; background:var(--fondo); color:var(--tinta); line-height:1.5; }
+    nav { background:var(--verde); display:flex; flex-wrap:wrap; gap:.25rem; padding:.5rem 1rem; }
+    nav a { color:#fff; text-decoration:none; padding:.4rem .8rem; border-radius:4px; font-family: system-ui, sans-serif; font-size:.95rem; }
+    nav a.activo, nav a:hover, nav a:focus-visible { background:rgba(255,255,255,.2); outline:none; }
+    main { max-width:760px; margin:1.5rem auto; padding:0 1rem; }
+    h1 { font-size:1.6rem; margin-top:0; }
+    label { display:block; margin:.8rem 0 .2rem; font-family: system-ui, sans-serif; font-size:.9rem; }
+    input, textarea, select { width:100%; padding:.5rem; border:1px solid var(--borde); border-radius:4px; font:inherit; background:#fff; }
+    input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible { outline:2px solid var(--verde); outline-offset:1px; }
+    button { margin-top:1rem; padding:.55rem 1.1rem; border:0; border-radius:4px; background:var(--verde); color:#fff; font:inherit; cursor:pointer; }
+    button.rojo { background:var(--error); }
+    .aviso { padding:.7rem 1rem; border-radius:4px; margin-bottom:1rem; font-family: system-ui, sans-serif; }
+    .ok { background:#e1f1e7; border:1px solid var(--verde); }
+    .mal { background:#f9e4df; border:1px solid var(--error); }
+    .mal ul { margin:0; padding-left:1.2rem; }
+    table { width:100%; border-collapse:collapse; margin-top:1rem; background:#fff; }
+    th, td { text-align:left; padding:.5rem; border-bottom:1px solid var(--borde); font-size:.95rem; vertical-align:top; }
+    .acciones form { display:inline; }
+    .vacio { color:#5c6b62; font-style:italic; }
+    .fila { display:flex; gap:1rem; flex-wrap:wrap; } .fila > div { flex:1; min-width:220px; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="{{ url_for('fundaciones.listado') }}" class="{{ 'activo' if seccion == 'listado' }}">Fundaciones</a>
+    <a href="{{ url_for('fundaciones.registro') }}" class="{{ 'activo' if seccion == 'registro' }}">Registrar fundación</a>
+    <a href="{{ url_for('fundaciones.donar') }}" class="{{ 'activo' if seccion == 'donar' }}">Donar</a>
+    <a href="{{ url_for('fundaciones.historial') }}" class="{{ 'activo' if seccion == 'historial' }}">Historial</a>
+    <a href="{{ url_for('fundaciones.pendientes') }}" class="{{ 'activo' if seccion == 'pendientes' }}">Aprobaciones</a>
+  </nav>
+
+  <main>
+    {% if mensaje %}<div class="aviso ok" role="status">{{ mensaje }}</div>{% endif %}
+    {% if errores %}
+    <div class="aviso mal" role="alert"><ul>{% for e in errores %}<li>{{ e }}</li>{% endfor %}</ul></div>
+    {% endif %}
+
+    {% if seccion == 'listado' %}
+      <h1>Fundaciones activas</h1>
+      {% if fundaciones %}
+      <table>
+        <tr><th>Nombre</th><th>Ubicación</th><th>Descripción</th></tr>
+        {% for f in fundaciones %}
+        <tr><td>{{ f.nombre }}</td><td>{{ f.ubicacion or '—' }}</td><td>{{ f.biografia or '—' }}</td></tr>
+        {% endfor %}
+      </table>
+      {% else %}
+      <p class="vacio">Aún no hay fundaciones aprobadas. Registra una y apruébala en Aprobaciones.</p>
+      {% endif %}
+
+    {% elif seccion == 'registro' %}
+      <h1>Registrar una fundación</h1>
+      <form method="post" action="{{ url_for('fundaciones.registro') }}">
+        <label for="nombre">Nombre de la fundación</label>
+        <input id="nombre" name="nombre" maxlength="100" required value="{{ form.get('nombre', '') }}">
+        <label for="email">Correo electrónico</label>
+        <input id="email" name="email" type="email" maxlength="100" required value="{{ form.get('email', '') }}">
+        <div class="fila">
+          <div><label for="ubicacion">Ubicación</label>
+            <input id="ubicacion" name="ubicacion" maxlength="100" value="{{ form.get('ubicacion', '') }}"></div>
+          <div><label for="telefono">Teléfono</label>
+            <input id="telefono" name="telefono" maxlength="20" value="{{ form.get('telefono', '') }}"></div>
+        </div>
+        <label for="sitio_web">Sitio web</label>
+        <input id="sitio_web" name="sitio_web" maxlength="150" value="{{ form.get('sitio_web', '') }}">
+        <label for="biografia">Descripción</label>
+        <textarea id="biografia" name="biografia" rows="4" maxlength="1000">{{ form.get('biografia', '') }}</textarea>
+        <button type="submit">Enviar registro</button>
+      </form>
+
+    {% elif seccion == 'donar' %}
+      <h1>Donar a una fundación</h1>
+      {% if fundaciones %}
+      <form method="post" action="{{ url_for('fundaciones.donar') }}">
+        <label for="fundacion_id">Fundación</label>
+        <select id="fundacion_id" name="fundacion_id" required>
+          <option value="">Selecciona una fundación</option>
+          {% for f in fundaciones %}
+          <option value="{{ f.id }}" {{ 'selected' if form.get('fundacion_id') == f.id }}>{{ f.nombre }}</option>
+          {% endfor %}
+        </select>
+        <label for="monto">Monto (USD)</label>
+        <input id="monto" name="monto" inputmode="decimal" required placeholder="25.50" value="{{ form.get('monto', '') }}">
+        <label for="correo_donante">Correo de tu cuenta (el donante debe estar registrado)</label>
+        <input id="correo_donante" name="correo_donante" type="email" required value="{{ form.get('correo_donante', '') }}">
+        <label for="mensaje">Mensaje (opcional)</label>
+        <textarea id="mensaje" name="mensaje" rows="3" maxlength="500">{{ form.get('mensaje', '') }}</textarea>
+        <button type="submit">Registrar donación</button>
+      </form>
+      {% else %}
+      <p class="vacio">No hay fundaciones activas para recibir donaciones.</p>
+      {% endif %}
+
+    {% elif seccion == 'historial' %}
+      <h1>Historial de donaciones</h1>
+      <form method="get" action="{{ url_for('fundaciones.historial') }}">
+        <div class="fila">
+          <div><label for="email">Correo del donante</label>
+            <input id="email" name="email" type="email" value="{{ form.get('email', '') }}"></div>
+          <div><label for="fundacion_id">O fundación</label>
+            <select id="fundacion_id" name="fundacion_id">
+              <option value="">Todas</option>
+              {% for f in fundaciones %}
+              <option value="{{ f.id }}" {{ 'selected' if form.get('fundacion_id') == f.id }}>{{ f.nombre }}</option>
+              {% endfor %}
+            </select></div>
+        </div>
+        <button type="submit">Consultar historial</button>
+      </form>
+      {% if historial is not none %}
+        {% if historial %}
+        <table>
+          <tr><th>Fecha</th><th>Fundación</th><th>Donante</th><th>Monto</th><th>Estado</th><th>Mensaje</th></tr>
+          {% for d in historial %}
+          <tr><td>{{ d.fecha }}</td><td>{{ d.fundacion }}</td><td>{{ d.donante }}</td><td>{{ d.monto }}</td><td>{{ d.estado }}</td><td>{{ d.mensaje }}</td></tr>
+          {% endfor %}
+        </table>
+        {% else %}
+        <p class="vacio">No hay donaciones para ese filtro.</p>
+        {% endif %}
+      {% endif %}
+
+    {% elif seccion == 'pendientes' %}
+      <h1>Fundaciones pendientes de aprobación</h1>
+      {% if pendientes %}
+      <table>
+        <tr><th>Nombre</th><th>Correo</th><th>Acciones</th></tr>
+        {% for f in pendientes %}
+        <tr>
+          <td>{{ f.nombre }}</td><td>{{ f.email }}</td>
+          <td class="acciones">
+            <form method="post" action="{{ url_for('fundaciones.resolver_pendiente', id_fundacion=f.id, accion='aprobar') }}"><button type="submit">Aprobar</button></form>
+            <form method="post" action="{{ url_for('fundaciones.resolver_pendiente', id_fundacion=f.id, accion='rechazar') }}"><button type="submit" class="rojo">Rechazar</button></form>
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+      <p class="vacio">No hay fundaciones esperando aprobación.</p>
+      {% endif %}
+    {% endif %}
+  </main>
+</body>
+</html>
