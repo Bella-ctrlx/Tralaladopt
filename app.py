@@ -1,6 +1,13 @@
 import os
 from dotenv import load_dotenv
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask import (
+    Flask,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from supabase import Client, create_client
 
 from modules.admin import (
@@ -8,12 +15,16 @@ from modules.admin import (
     obtener_estadisticas_panel,
     obtener_fundaciones_pendientes,
 )
+from modules.auth import iniciar_sesion, obtener_perfil, registrar_usuario
 from modules.animals import registrar_rutas_animales
 
+# Cargar variables de entorno desde el archivo .env
 load_dotenv()
 
 app = Flask(__name__)
 
+# Clave secreta necesaria para que Flask gestione las sesiones de usuario
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "clave_secreta_desarrollo_123")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
@@ -27,77 +38,72 @@ if SUPABASE_URL and SUPABASE_KEY:
 else:
     print("Advertencia: Faltan credenciales de Supabase en el archivo .env")
 
+# --- RUTAS MÓDULO ANIMALES (INTEGRANTE 2) ---
 registrar_rutas_animales(app, supabase)
-
 
 @app.route("/")
 def inicio():
-    return jsonify({"mensaje": "Bienvenido al API de Tralaladopt"})
+    return redirect(url_for("login"))
 
 
-@app.route("/registro", methods=["POST"])
+@app.route("/registro", methods=["GET", "POST"])
 def registro():
-    if not supabase:
-        return jsonify({"error": "Servicio de base de datos no disponible"}), 500
+    if request.method == "POST":
+        resultado = registrar_usuario(request.form)
+        if resultado["exito"]:
+            return redirect(url_for("login"))
+        return render_template("registro.html", error=resultado.get("error"))
 
-    datos = request.get_json() or {}
-    email = datos.get("email")
-    password = datos.get("password")
-
-    if not email or not password:
-        return jsonify({"error": "Por favor, envía email y contraseña"}), 400
-
-    try:
-        respuesta = supabase.auth.sign_up(
-            {"email": email, "password": password}
-        )
-        return (
-            jsonify(
-                {
-                    "mensaje": "¡Usuario registrado con éxito!",
-                    "usuario": respuesta.user.email if respuesta.user else None,
-                }
-            ),
-            201,
-        )
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
+    return render_template("registro.html")
 
 
-@app.route("/login", methods=["POST"])
+@app.route("/login", methods=["GET", "POST"])
 def login():
-    if not supabase:
-        return jsonify({"error": "Servicio de base de datos no disponible"}), 500
+    if request.method == "POST":
+        email = request.form.get("email")
+        resultado = iniciar_sesion(email)
 
-    datos = request.get_json() or {}
-    email = datos.get("email")
-    password = datos.get("password")
+        if resultado["exito"]:
+            # Guarda los datos claves del usuario en la sesión de Flask
+            session["user_id"] = resultado["usuario"]["id"]
+            session["user_role"] = resultado["usuario"]["rol"]
 
-    if not email or not password:
-        return jsonify({"error": "Por favor, envía email y contraseña"}), 400
+            # Redirección según el rol de la cuenta
+            if resultado["usuario"]["rol"] == "administrador":
+                return redirect(url_for("admin_dashboard"))
+            return redirect(url_for("perfil"))
 
-    try:
-        respuesta = supabase.auth.sign_in_with_password(
-            {"email": email, "password": password}
-        )
-        token = (
-            respuesta.session.access_token if respuesta.session else None
-        )
-        return (
-            jsonify(
-                {
-                    "mensaje": "¡Inicio de sesión exitoso!",
-                    "token": token,
-                }
-            ),
-            200,
-        )
-    except Exception:
-        return jsonify({"error": "Correo o contraseña incorrectos"}), 401
+        return render_template("login.html", error=resultado.get("error"))
+
+    return render_template("login.html")
+
+
+@app.route("/perfil")
+def perfil():
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
+
+    usuario = obtener_perfil(user_id)
+    return render_template("profile.html", usuario=usuario)
+
+
+@app.route("/logout")
+def logout():
+    # Limpia la sesión actual
+    session.clear()
+    return redirect(url_for("login"))
+
+
+# --- RUTAS MÓDULO ADMINISTRACIÓN (INTEGRANTE 5) ---
 
 
 @app.route("/admin")
 def admin_dashboard():
+    # Protección de ruta: Solo administradores pueden ingresar
+    if session.get("user_role") != "administrador":
+        return redirect(url_for("login"))
+
     stats = obtener_estadisticas_panel()
     fundaciones = obtener_fundaciones_pendientes()
     return render_template(
@@ -107,11 +113,12 @@ def admin_dashboard():
 
 @app.route("/admin/aprobar-fundacion/<id_fundacion>", methods=["POST"])
 def aprobar_fundacion(id_fundacion):
+    if session.get("user_role") != "administrador":
+        return redirect(url_for("login"))
+
     cambiar_estado_fundacion(id_fundacion, "activo")
     return redirect(url_for("admin_dashboard"))
 
 
 if __name__ == "__main__":
     app.run(debug=True)
-
-    
