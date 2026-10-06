@@ -27,6 +27,9 @@ from modules.auth import (
     registrar_usuario,
 )
 
+# Fundaciones - Integrante 4
+from modules.fundaciones import fundaciones_bp
+
 # Animales - Integrante 2
 from modules.animals import registrar_rutas_animales
 
@@ -53,6 +56,13 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client | None = None
 
 
+# BLUEPRINTS
+
+# Fundaciones - Integrante 4
+app.register_blueprint(fundaciones_bp)
+
+
+
 # CONEXIÓN A SUPABASE
 if SUPABASE_URL and SUPABASE_KEY:
     try:
@@ -76,7 +86,7 @@ else:
     )
 
 
-# REGISTRAR MÓDULOS - INTEGRANTE 2
+# MÓDULOS - INTEGRANTE 2
 registrar_rutas_animales(app, supabase)
 registrar_rutas_adopciones(app, supabase)
 registrar_rutas_favoritos(app, supabase)
@@ -85,53 +95,35 @@ registrar_rutas_favoritos(app, supabase)
 # INICIO
 @app.route("/")
 def inicio():
-    return redirect(
-        url_for("login")
-    )
+    return redirect(url_for("login"))
 
 
 # REGISTRO
-@app.route(
-    "/registro",
-    methods=["GET", "POST"]
-)
+@app.route("/registro", methods=["GET", "POST"])
 def registro():
 
     if request.method == "POST":
-
-        resultado = registrar_usuario(
-            request.form
-        )
+        resultado = registrar_usuario(request.form)
 
         if resultado["exito"]:
-            return redirect(
-                url_for("login")
-            )
+            return redirect(url_for("login"))
 
         return render_template(
             "Login/register.html",
             error=resultado.get("error")
         )
 
-    return render_template(
-        "Login/register.html"
-    )
+    return render_template("Login/register.html")
 
 
-# LOGIN+
-@app.route(
-    "/login",
-    methods=["GET", "POST"]
-)
+# LOGIN
+@app.route("/login", methods=["GET", "POST"])
 def login():
 
     if request.method == "POST":
-
         email = request.form.get("email")
 
-        resultado = iniciar_sesion(
-            email
-        )
+        resultado = iniciar_sesion(email)
 
         if resultado["exito"]:
 
@@ -160,9 +152,8 @@ def login():
             error=resultado.get("error")
         )
 
-    return render_template(
-        "Login/login.html"
-    )
+    return render_template("Login/login.html")
+
 
 # PERFIL
 @app.route("/perfil")
@@ -175,14 +166,13 @@ def perfil():
             url_for("login")
         )
 
-    usuario = obtener_perfil(
-        user_id
-    )
+    usuario = obtener_perfil(user_id)
 
     return render_template(
         "Login/profile.html",
         usuario=usuario
     )
+
 
 # CERRAR SESIÓN
 @app.route("/logout")
@@ -194,14 +184,12 @@ def logout():
         url_for("login")
     )
 
+
 # ADMINISTRACIÓN - INTEGRANTE 5
 @app.route("/admin")
 def admin_dashboard():
 
-    if (
-        session.get("user_role")
-        != "administrador"
-    ):
+    if session.get("user_role") != "administrador":
         return redirect(
             url_for("login")
         )
@@ -225,10 +213,7 @@ def admin_dashboard():
 )
 def aprobar_fundacion(id_fundacion):
 
-    if (
-        session.get("user_role")
-        != "administrador"
-    ):
+    if session.get("user_role") != "administrador":
         return redirect(
             url_for("login")
         )
@@ -241,8 +226,8 @@ def aprobar_fundacion(id_fundacion):
     return redirect(
         url_for("admin_dashboard")
     )
-    
-    
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)
