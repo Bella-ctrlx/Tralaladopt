@@ -1,0 +1,364 @@
+    <!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Mis favoritos | Tralaladopt
+    </title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            color: #222;
+        }
+
+        header {
+            background: white;
+            padding: 20px 7%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow:
+                0 2px 8px rgba(0,0,0,.08);
+        }
+
+        .logo {
+            font-size: 25px;
+            font-weight: bold;
+        }
+
+        .contenedor {
+            width: 86%;
+            max-width: 1200px;
+            margin: 40px auto;
+        }
+
+        .encabezado {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns:
+                repeat(
+                    auto-fill,
+                    minmax(270px, 1fr)
+                );
+            gap: 22px;
+        }
+
+        .card {
+            background: white;
+            padding: 18px;
+            border-radius: 15px;
+            box-shadow:
+                0 3px 12px rgba(0,0,0,.08);
+        }
+
+        .foto {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+            border-radius: 11px;
+            margin-bottom: 15px;
+        }
+
+        .sin-foto {
+            width: 100%;
+            height: 220px;
+            background: #eee;
+            border-radius: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 65px;
+            margin-bottom: 15px;
+        }
+
+        h1,
+        h2 {
+            margin-top: 0;
+        }
+
+        .estado {
+            display: inline-block;
+            background: #eee;
+            padding: 6px 11px;
+            border-radius: 20px;
+            font-size: 13px;
+        }
+
+        .acciones {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 18px;
+        }
+
+        .btn,
+        button {
+            display: inline-block;
+            border: 0;
+            background: #222;
+            color: white;
+            padding: 10px 14px;
+            border-radius: 7px;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .eliminar {
+            background: #b42318;
+        }
+
+        .vacio {
+            background: white;
+            text-align: center;
+            padding: 50px;
+            border-radius: 15px;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<header>
+
+    <div class="logo">
+        🐾 Tralaladopt
+    </div>
+
+    <a
+        href="{{ url_for('catalogo_animales') }}"
+    >
+        Catálogo
+    </a>
+
+</header>
+
+
+<main class="contenedor">
+
+    <div class="encabezado">
+
+        <div>
+
+            <h1>
+                ❤️ Mis favoritos
+            </h1>
+
+            <p>
+                Animales que has guardado.
+            </p>
+
+        </div>
+
+        <a
+            class="btn"
+            href="{{ url_for('catalogo_animales') }}"
+        >
+            Ver animales
+        </a>
+
+    </div>
+
+
+    {% if favoritos %}
+
+        <div class="grid">
+
+            {% for favorito in favoritos %}
+
+                {% set animal = favorito.animales %}
+
+                {% if animal %}
+
+                    <article class="card">
+
+                        <!-- FOTO -->
+
+                        {% if animal.fotos
+                            and animal.fotos|length > 0
+                        %}
+
+                            <img
+                                src="{{ animal.fotos[0] }}"
+                                alt="Foto de {{ animal.nombre }}"
+                                class="foto"
+                            >
+
+                        {% else %}
+
+                            <div class="sin-foto">
+                                🐾
+                            </div>
+
+                        {% endif %}
+
+
+                        <span class="estado">
+
+                            {{
+                                animal.estado
+                                |replace("_", " ")
+                                |capitalize
+                            }}
+
+                        </span>
+
+
+                        <h2>
+                            {{ animal.nombre }}
+                        </h2>
+
+
+                        <p>
+
+                            <strong>
+                                Especie:
+                            </strong>
+
+                            {{ animal.especie }}
+
+                        </p>
+
+
+                        <p>
+
+                            <strong>
+                                Raza:
+                            </strong>
+
+                            {{
+                                animal.raza
+                                or "No especificada"
+                            }}
+
+                        </p>
+
+
+                        <p>
+
+                            <strong>
+                                Edad:
+                            </strong>
+
+                            {% if animal.edad is not none %}
+
+                                {{ animal.edad }}
+
+                            {% else %}
+
+                                No especificada
+
+                            {% endif %}
+
+                        </p>
+
+
+                        <p>
+
+                            <strong>
+                                Ubicación:
+                            </strong>
+
+                            {{
+                                animal.ubicacion
+                                or "No especificada"
+                            }}
+
+                        </p>
+
+
+                        <div class="acciones">
+
+                            <a
+                                class="btn"
+                                href="{{ url_for(
+                                    'detalle_animal',
+                                    animal_id=animal.id
+                                ) }}"
+                            >
+                                Ver ficha
+                            </a>
+
+
+                            <form
+                                method="POST"
+                                action="{{ url_for(
+                                    'eliminar_favorito',
+                                    animal_id=animal.id
+                                ) }}"
+                            >
+
+                                <button
+                                    type="submit"
+                                    class="eliminar"
+                                >
+                                    Quitar ❤️
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                    </article>
+
+                {% endif %}
+
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="vacio">
+
+            <h2>
+                Aún no tienes favoritos
+            </h2>
+
+            <p>
+                Guarda los animales que
+                más te interesen.
+            </p>
+
+            <a
+                class="btn"
+                href="{{ url_for(
+                    'catalogo_animales'
+                ) }}"
+            >
+                Explorar animales
+            </a>
+
+        </div>
+
+    {% endif %}
+
+</main>
+
+</body>
+</html>

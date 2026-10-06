@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Catálogo de Animales | Tralaladopt
+    </title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            color: #242424;
+        }
+
+        header {
+            background: white;
+            padding: 20px 7%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow:
+                0 2px 8px rgba(0,0,0,.08);
+        }
+
+        .logo {
+            font-size: 26px;
+            font-weight: bold;
+        }
+
+        .contenedor {
+            width: 86%;
+            max-width: 1200px;
+            margin: 35px auto;
+        }
+
+        .titulo {
+            display: flex;
+            justify-content:
+                space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 18px;
+            border-radius: 8px;
+            border: 0;
+            background: #222;
+            color: white;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .filtros {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 25px 0;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        input,
+        select {
+            padding: 11px;
+            border: 1px solid #ccc;
+            border-radius: 7px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns:
+                repeat(
+                    auto-fill,
+                    minmax(270px, 1fr)
+                );
+            gap: 22px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 18px;
+            box-shadow:
+                0 3px 12px rgba(0,0,0,.08);
+            overflow: hidden;
+        }
+
+        .foto-animal {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+            border-radius: 11px;
+            margin-bottom: 15px;
+        }
+
+        .sin-foto {
+            width: 100%;
+            height: 220px;
+            border-radius: 11px;
+            background: #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 65px;
+            margin-bottom: 15px;
+        }
+
+        .card h2 {
+            margin-top: 8px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 11px;
+            background: #eee;
+            border-radius: 20px;
+            font-size: 13px;
+        }
+
+        .acciones {
+            display: flex;
+            gap: 8px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+
+        .acciones a {
+            text-decoration: none;
+            padding: 9px 13px;
+            background: #eee;
+            border-radius: 7px;
+            color: #222;
+        }
+
+        .vacio {
+            background: white;
+            padding: 45px;
+            text-align: center;
+            border-radius: 12px;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<header>
+
+    <div class="logo">
+        🐾 Tralaladopt
+    </div>
+
+    <a href="{{ url_for('inicio') }}">
+        Inicio
+    </a>
+
+</header>
+
+
+<main class="contenedor">
+
+    <div class="titulo">
+
+        <div>
+
+            <h1>
+                Animales en adopción
+            </h1>
+
+            <p>
+                Encuentra a tu próximo
+                compañero.
+            </p>
+
+        </div>
+
+        <a
+            class="btn"
+            href="{{ url_for('nuevo_animal') }}"
+        >
+            + Agregar animal
+        </a>
+
+    </div>
+
+
+    <!-- FILTROS -->
+
+    <form
+        class="filtros"
+        method="GET"
+    >
+
+        <input
+            type="text"
+            name="especie"
+            placeholder="Buscar por especie"
+            value="{{ especie }}"
+        >
+
+        <select name="vulnerabilidad">
+
+            <option value="">
+                Todas las vulnerabilidades
+            </option>
+
+            <option
+                value="baja"
+                {% if vulnerabilidad == "baja" %}
+                    selected
+                {% endif %}
+            >
+                Baja
+            </option>
+
+            <option
+                value="media"
+                {% if vulnerabilidad == "media" %}
+                    selected
+                {% endif %}
+            >
+                Media
+            </option>
+
+            <option
+                value="alta"
+                {% if vulnerabilidad == "alta" %}
+                    selected
+                {% endif %}
+            >
+                Alta
+            </option>
+
+        </select>
+
+        <button
+            class="btn"
+            type="submit"
+        >
+            Filtrar
+        </button>
+
+        <a
+            href="{{ url_for('catalogo_animales') }}"
+            class="btn"
+        >
+            Limpiar
+        </a>
+
+    </form>
+
+
+    {% if animales %}
+
+        <div class="grid">
+
+            {% for animal in animales %}
+
+                <article class="card">
+
+                    <!-- FOTO -->
+
+                    {% if animal.fotos
+                        and animal.fotos|length > 0
+                    %}
+
+                        <img
+                            src="{{ animal.fotos[0] }}"
+                            alt="Foto de {{ animal.nombre }}"
+                            class="foto-animal"
+                        >
+
+                    {% else %}
+
+                        <div class="sin-foto">
+                            🐾
+                        </div>
+
+                    {% endif %}
+
+
+                    <span class="badge">
+
+                        Vulnerabilidad:
+                        {{
+                            animal.vulnerabilidad
+                            |capitalize
+                        }}
+
+                    </span>
+
+
+                    <h2>
+                        {{ animal.nombre }}
+                    </h2>
+
+
+                    <p>
+                        <strong>
+                            Especie:
+                        </strong>
+
+                        {{ animal.especie }}
+                    </p>
+
+
+                    <p>
+                        <strong>
+                            Raza:
+                        </strong>
+
+                        {{
+                            animal.raza
+                            or "No especificada"
+                        }}
+                    </p>
+
+
+                    <p>
+                        <strong>
+                            Edad:
+                        </strong>
+
+                        {% if animal.edad is not none %}
+                            {{ animal.edad }}
+                        {% else %}
+                            No especificada
+                        {% endif %}
+                    </p>
+
+
+                    <p>
+                        <strong>
+                            Estado:
+                        </strong>
+
+                        {{
+                            animal.estado
+                            |replace("_", " ")
+                            |capitalize
+                        }}
+                    </p>
+
+
+                    <div class="acciones">
+
+                        <a
+                            href="{{ url_for(
+                                'detalle_animal',
+                                animal_id=animal.id
+                            ) }}"
+                        >
+                            Ver ficha
+                        </a>
+
+                        <a
+                            href="{{ url_for(
+                                'editar_animal',
+                                animal_id=animal.id
+                            ) }}"
+                        >
+                            Editar
+                        </a>
+
+                    </div>
+
+                </article>
+
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="vacio">
+
+            <h2>
+                No hay animales registrados
+            </h2>
+
+            <p>
+                Agrega el primer animal
+                al catálogo.
+            </p>
+
+        </div>
+
+    {% endif %}
+
+</main>
+
+</body>
+</html>
