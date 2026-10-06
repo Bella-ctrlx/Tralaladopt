@@ -9,9 +9,7 @@ from flask import (
 )
 
 
-# ============================================================
 # CONFIGURACIÓN
-# ============================================================
 
 CAMPOS_PERMITIDOS = {
     "nombre",
@@ -45,10 +43,7 @@ ESTADOS = {
 }
 
 
-# ============================================================
 # SUBIR FOTO A SUPABASE STORAGE
-# ============================================================
-
 def subir_foto_animal(supabase, archivo):
 
     if not archivo or not archivo.filename:
@@ -104,9 +99,7 @@ def subir_foto_animal(supabase, archivo):
     return url_foto
 
 
-# ============================================================
 # PREPARAR DATOS DEL ANIMAL
-# ============================================================
 
 def preparar_datos_animal(datos):
 
@@ -199,17 +192,12 @@ def preparar_datos_animal(datos):
     }
 
 
-# ============================================================
 # REGISTRAR RUTAS
-# ============================================================
 
 def registrar_rutas_animales(app, supabase):
 
 
-    # ========================================================
     # API - LISTAR ANIMALES
-    # ========================================================
-
     @app.route(
         "/api/animales",
         methods=["GET"]
@@ -315,10 +303,7 @@ def registrar_rutas_animales(app, supabase):
             }), 500
 
 
-    # ========================================================
     # API - OBTENER ANIMAL
-    # ========================================================
-
     @app.route(
         "/api/animales/<animal_id>",
         methods=["GET"]
@@ -359,10 +344,7 @@ def registrar_rutas_animales(app, supabase):
             }), 500
 
 
-    # ========================================================
     # API - CREAR ANIMAL
-    # ========================================================
-
     @app.route(
         "/api/animales",
         methods=["POST"]
@@ -453,10 +435,7 @@ def registrar_rutas_animales(app, supabase):
             }), 500
 
 
-    # ========================================================
     # API - ACTUALIZAR ANIMAL
-    # ========================================================
-
     @app.route(
         "/api/animales/<animal_id>",
         methods=["PUT", "PATCH"]
@@ -607,10 +586,7 @@ def registrar_rutas_animales(app, supabase):
             }), 500
 
 
-    # ========================================================
     # API - ELIMINAR ANIMAL
-    # ========================================================
-
     @app.route(
         "/api/animales/<animal_id>",
         methods=["DELETE"]
@@ -661,10 +637,7 @@ def registrar_rutas_animales(app, supabase):
             }), 500
 
 
-    # ========================================================
     # WEB - CATÁLOGO
-    # ========================================================
-
     @app.route("/animales")
     def catalogo_animales():
 
@@ -724,10 +697,7 @@ def registrar_rutas_animales(app, supabase):
             )
 
 
-    # ========================================================
     # WEB - NUEVO ANIMAL
-    # ========================================================
-
     @app.route(
         "/animales/nuevo",
         methods=["GET", "POST"]
@@ -902,10 +872,7 @@ def registrar_rutas_animales(app, supabase):
             )
 
 
-    # ========================================================
     # WEB - DETALLE
-    # ========================================================
-
     @app.route(
         "/animales/<animal_id>"
     )
@@ -948,10 +915,7 @@ def registrar_rutas_animales(app, supabase):
             )
 
 
-    # ========================================================
     # WEB - EDITAR
-    # ========================================================
-
     @app.route(
         "/animales/<animal_id>/editar",
         methods=["GET", "POST"]
@@ -1148,10 +1112,7 @@ def registrar_rutas_animales(app, supabase):
             )
 
 
-    # ========================================================
     # WEB - ELIMINAR
-    # ========================================================
-
     @app.route(
         "/animales/<animal_id>/eliminar",
         methods=["POST"]
