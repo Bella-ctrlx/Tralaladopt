@@ -17,14 +17,11 @@ from modules.admin import (
 )
 from modules.auth import iniciar_sesion, obtener_perfil, registrar_usuario
 from modules.fundaciones import fundaciones_bp  # <- Integrante 4
-
-# Cargar variables de entorno desde el archivo .env
 load_dotenv()
 
 app = Flask(__name__)
 app.register_blueprint(fundaciones_bp)  # <- Integrante 4
 
-# Clave secreta necesaria para que Flask gestione las sesiones de usuario
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "clave_secreta_desarrollo_123")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
@@ -40,7 +37,6 @@ else:
     print("Advertencia: Faltan credenciales de Supabase en el archivo .env")
 
 
-
 @app.route("/")
 def inicio():
     return redirect(url_for("login"))
@@ -52,9 +48,10 @@ def registro():
         resultado = registrar_usuario(request.form)
         if resultado["exito"]:
             return redirect(url_for("login"))
-        return render_template("registro.html", error=resultado.get("error"))
+        return render_template("register.html", error=resultado.get("error"))
 
-    return render_template("registro.html")
+    # Corregido: se usa 'register.html'
+    return render_template("register.html")
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -64,7 +61,7 @@ def login():
         resultado = iniciar_sesion(email)
 
         if resultado["exito"]:
-            # Guarda los datos claves del usuario en la sesión de Flask
+            # Guarda los datos clave del usuario en la sesión de Flask
             session["user_id"] = resultado["usuario"]["id"]
             session["user_role"] = resultado["usuario"]["rol"]
 
@@ -100,7 +97,6 @@ def logout():
 
 @app.route("/admin")
 def admin_dashboard():
-    # Protección de ruta: Solo administradores pueden ingresar
     if session.get("user_role") != "administrador":
         return redirect(url_for("login"))
 
