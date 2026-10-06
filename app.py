@@ -16,9 +16,12 @@ from modules.admin import (
     obtener_fundaciones_pendientes,
 )
 from modules.auth import iniciar_sesion, obtener_perfil, registrar_usuario
+from modules.fundaciones import fundaciones_bp  # <- Integrante 4
 load_dotenv()
 
 app = Flask(__name__)
+app.register_blueprint(fundaciones_bp)  # <- Integrante 4
+
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "clave_secreta_desarrollo_123")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
