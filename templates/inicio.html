@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inicio | Tralaladopt</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body class="pagina-inicio">
+
+{% set role = session.get('user_role', '')|lower %}
+
+<div class="app-layout">
+
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="sidebar-logo-icono">🐾</div>
+            <div>
+                <strong>Tralaladopt</strong>
+                <span>Adopta y cambia una vida</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-menu">
+            <a href="{{ url_for('inicio') }}" class="sidebar-link activo">
+                <span class="sidebar-icono">🏠</span><span>Inicio</span>
+            </a>
+
+            {% if role == 'adoptante' %}
+                <a href="{{ url_for('catalogo_animales') }}" class="sidebar-link">
+                    <span class="sidebar-icono">🐾</span><span>Animales</span>
+                </a>
+                <a href="{{ url_for('mis_favoritos') }}" class="sidebar-link">
+                    <span class="sidebar-icono">♥</span><span>Favoritos</span>
+                </a>
+                <a href="{{ url_for('mis_solicitudes') }}" class="sidebar-link">
+                    <span class="sidebar-icono">📋</span><span>Mis solicitudes</span>
+                </a>
+                <a href="{{ url_for('fundaciones.listado') }}" class="sidebar-link">
+                    <span class="sidebar-icono">🏢</span><span>Fundaciones</span>
+                </a>
+                <a href="{{ url_for('fundaciones.donar') }}" class="sidebar-link">
+                    <span class="sidebar-icono">💛</span><span>Donar</span>
+                </a>
+            {% endif %}
+
+            {% if role == 'fundacion' %}
+                <a href="{{ url_for('catalogo_animales') }}" class="sidebar-link">
+                    <span class="sidebar-icono">🐾</span><span>Catálogo</span>
+                </a>
+                <a href="{{ url_for('nuevo_animal') }}" class="sidebar-link">
+                    <span class="sidebar-icono">➕</span><span>Registrar animal</span>
+                </a>
+                <a href="{{ url_for('fundaciones.listado') }}" class="sidebar-link">
+                    <span class="sidebar-icono">🏢</span><span>Fundaciones</span>
+                </a>
+                <a href="{{ url_for('fundaciones.historial') }}" class="sidebar-link">
+                    <span class="sidebar-icono">💰</span><span>Donaciones recibidas</span>
+                </a>
+            {% endif %}
+
+            {% if role in ['administrador', 'admin'] %}
+                <a href="{{ url_for('admin_dashboard') }}" class="sidebar-link">
+                    <span class="sidebar-icono">📊</span><span>Administración</span>
+                </a>
+                <a href="{{ url_for('fundaciones.pendientes') }}" class="sidebar-link">
+                    <span class="sidebar-icono">✅</span><span>Aprobar fundaciones</span>
+                </a>
+                <a href="{{ url_for('fundaciones.listado') }}" class="sidebar-link">
+                    <span class="sidebar-icono">🏢</span><span>Fundaciones activas</span>
+                </a>
+                <a href="{{ url_for('catalogo_animales') }}" class="sidebar-link">
+                    <span class="sidebar-icono">🐾</span><span>Todos los animales</span>
+                </a>
+                <a href="{{ url_for('nuevo_animal') }}" class="sidebar-link">
+                    <span class="sidebar-icono">➕</span><span>Registrar animal</span>
+                </a>
+            {% endif %}
+
+            <div class="sidebar-separador"></div>
+
+            <a href="{{ url_for('perfil') }}" class="sidebar-link">
+                <span class="sidebar-icono">👤</span><span>Mi perfil</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="sidebar-logout">↪ Cerrar sesión</a>
+        </div>
+    </aside>
+
+    <div class="app-contenido">
+        <header class="topbar">
+            <div>
+                <p class="topbar-etiqueta">TRALALADOPT</p>
+                <h2>Inicio</h2>
+            </div>
+
+            <div class="topbar-usuario">
+                <div class="topbar-avatar">
+                    {{ usuario.nombre[0]|upper if usuario and usuario.nombre else 'U' }}
+                </div>
+                <div>
+                    <strong>{{ usuario.nombre if usuario else 'Usuario' }}</strong>
+                    <span>
+                        {% if role == 'adoptante' %}Adoptante
+                        {% elif role == 'fundacion' %}Fundación
+                        {% elif role in ['administrador', 'admin'] %}Administrador
+                        {% else %}Usuario{% endif %}
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <main class="inicio-contenedor">
+            <section class="hero">
+                <div class="hero-contenido">
+                    <p class="hero-etiqueta">TRALALADOPT</p>
+
+                    {% if role == 'adoptante' %}
+                        <h1>Encuentra a tu próximo compañero.</h1>
+                        <p class="hero-descripcion">
+                            Explora animales que buscan un hogar, conoce fundaciones y apoya su labor.
+                        </p>
+                        <a href="{{ url_for('catalogo_animales') }}" class="btn-principal">Ver animales</a>
+
+                    {% elif role == 'fundacion' %}
+                        <h1>Ayudemos a más animales a encontrar un hogar.</h1>
+                        <p class="hero-descripcion">
+                            Publica animales, consulta el catálogo y revisa las donaciones recibidas por tu fundación.
+                        </p>
+                        <a href="{{ url_for('nuevo_animal') }}" class="btn-principal">Registrar animal</a>
+
+                    {% elif role in ['administrador', 'admin'] %}
+                        <h1>Administración de Tralaladopt.</h1>
+                        <p class="hero-descripcion">
+                            Supervisa la plataforma, revisa fundaciones pendientes y administra los registros del sistema.
+                        </p>
+                        <a href="{{ url_for('admin_dashboard') }}" class="btn-principal">Abrir panel</a>
+
+                    {% else %}
+                        <h1>Bienvenido a Tralaladopt.</h1>
+                        <p class="hero-descripcion">Explora las herramientas disponibles en la plataforma.</p>
+                    {% endif %}
+                </div>
+            </section>
+
+            <section class="bienvenida">
+                <p class="seccion-etiqueta">BIENVENIDO</p>
+                <h2>Hola, {{ usuario.nombre if usuario else 'usuario' }}.</h2>
+
+                {% if role == 'adoptante' %}
+                    <p>Busca animales, guarda favoritos, consulta tus solicitudes, conoce fundaciones y realiza donaciones.</p>
+                {% elif role == 'fundacion' %}
+                    <p>Gestiona tus publicaciones y consulta únicamente el historial de donaciones recibidas por tu fundación.</p>
+                {% elif role in ['administrador', 'admin'] %}
+                    <p>Supervisa el sistema y revisa las fundaciones que esperan aprobación.</p>
+                {% else %}
+                    <p>Explora las opciones disponibles en Tralaladopt.</p>
+                {% endif %}
+            </section>
+
+            {% if role == 'adoptante' %}
+                <section class="tarjetas-opciones">
+                    <article class="opcion-card">
+                        <div class="opcion-icono">🐾</div>
+                        <h3>Buscar animales</h3>
+                        <p>Consulta los animales registrados y conoce sus detalles.</p>
+                        <a href="{{ url_for('catalogo_animales') }}" class="btn-secundario">Explorar</a>
+                    </article>
+
+                    <article class="opcion-card">
+                        <div class="opcion-icono">♥</div>
+                        <h3>Mis favoritos</h3>
+                        <p>Revisa los animales que has guardado como favoritos.</p>
+                        <a href="{{ url_for('mis_favoritos') }}" class="btn-secundario">Ver favoritos</a>
+                    </article>
+
+                    <article class="opcion-card">
+                        <div class="opcion-icono">📋</div>
+                        <h3>Mis solicitudes</h3>
+                        <p>Consulta el estado de tus solicitudes de adopción.</p>
+                        <a href="{{ url_for('mis_solicitudes') }}" class="btn-secundario">Consultar</a>
+                    </article>
+
+                    <article class="opcion-card">
+                        <div class="opcion-icono">🏢</div>
+                        <h3>Fundaciones</h3>
+                        <p>Conoce las fundaciones activas registradas en Tralaladopt.</p>
+                        <a href="{{ url_for('fundaciones.listado') }}" class="btn-secundario">Ver fundaciones</a>
+                    </article>
+
+                    <article class="opcion-card">
+                        <div class="opcion-icono">💛</div>
+                        <h3>Donar</h3>
+                        <p>Apoya a cualquiera de las fundaciones activas de la plataforma.</p>
+                        <a href="{{ url_for('fundaciones.donar') }}" class="btn-secundario">Realizar donación</a>
+                    </article>
+
+                    <article class="opcion-card">
+                        <div class="opcion-icono">👤</div>
+                        <h3>Mi perfil</h3>
+                        <p>Consulta la información y el estado de tu cuenta.</p>
+                        <a href="{{ url_for('perfil') }}" class="btn-secundario">Ver perfil</a>
+                    </article>
+                </section>
+            {% endif %}
+
+            {% if role == 'fundacion' %}
+                <section class="tarjetas-opciones">
+                    <article class="opcion-card">
+                        <div class="opcion-icono">🐾</div>
+                        <h3>Catálogo de animales</h3>
+                        <p>Consulta los animales registrados actualmente.</p>
+                        <a href="{{ url_for('catalogo_animales') }}" class="btn-secundario">Ver catálogo</a>
+                    </article>
+
+                    <article class="opcion-card">
+                        <div class="opcion-icono">➕</div>
+                        <h3>Registrar animal</h3>
+                        <p>Publica un animal para que aparezca en la plataforma.</p>
+                        <a href="{{ url_for('nuevo_animal') }}" class="btn-secundario">Registrar</a>
+                    </article>
+
+                    <article class="opcion-card">
+                        <div class="opcion-icono">🏢</div>
+                        <h3>Fundaciones</h3>
+                        <p>Consulta las fundaciones activas de Tralaladopt.</p>
+                        <a href="{{ url_for('fundaciones.listado') }}" class="btn-secundario">Ver fundaciones</a>
+                    </article>
+
+                    <article class="opcion-card">
+                        <div class="opcion-icono">💰</div>
+                        <h3>Donaciones recibidas</h3>
+                        <p>Consulta únicamente las donaciones hechas a tu fundación.</p>
+                        <a href="{{ url_for('fundaciones.historial') }}" class="btn-secundario">Ver historial</a>
+                    </article>
+
+                    <article class="opcion-card">
+                        <div class="opcion-icono">👤</div>
+                        <h3>Mi perfil</h3>
+                        <p>Consulta la información y el estado de tu cuenta.</p>
+                        <a href="{{ url_for('perfil') }}" class="btn-secundario">Ver perfil</a>
+                    </article>
+                </section>
+            {% endif %}
+
+            {% if role in ['administrador', 'admin'] %}
+                <section class="tarjetas-opciones">
+                    <article class="opcion-card">
+                        <div class="opcion-icono">📊</div>
+                        <h3>Panel administrativo</h3>
+                        <p>Consulta las métricas generales y herramientas administrativas.</p>
+                        <a href="{{ url_for('admin_dashboard') }}" class="btn-secundario">Abrir panel</a>
+                    </article>
+
+                    <article class="opcion-card">
+                        <div class="opcion-icono">✅</div>
+                        <h3>Aprobar fundaciones</h3>
+                        <p>Revisa las cuentas de fundación que están pendientes.</p>
+                        <a href="{{ url_for('fundaciones.pendientes') }}" class="btn-secundario">Gestionar</a>
+                    </article>
+
+                    <article class="opcion-card">
+                        <div class="opcion-icono">🏢</div>
+                        <h3>Fundaciones activas</h3>
+                        <p>Consulta las fundaciones aprobadas en la plataforma.</p>
+                        <a href="{{ url_for('fundaciones.listado') }}" class="btn-secundario">Ver fundaciones</a>
+                    </article>
+
+                    <article class="opcion-card">
+                        <div class="opcion-icono">🐾</div>
+                        <h3>Todos los animales</h3>
+                        <p>Consulta el catálogo completo de animales registrados.</p>
+                        <a href="{{ url_for('catalogo_animales') }}" class="btn-secundario">Ver animales</a>
+                    </article>
+
+                    <article class="opcion-card">
+                        <div class="opcion-icono">➕</div>
+                        <h3>Registrar animal</h3>
+                        <p>Registra un animal nuevo y asígnalo a una fundación activa.</p>
+                        <a href="{{ url_for('nuevo_animal') }}" class="btn-secundario">Registrar</a>
+                    </article>
+
+                    <article class="opcion-card">
+                        <div class="opcion-icono">👤</div>
+                        <h3>Mi perfil</h3>
+                        <p>Consulta la información de tu cuenta administrativa.</p>
+                        <a href="{{ url_for('perfil') }}" class="btn-secundario">Ver perfil</a>
+                    </article>
+                </section>
+            {% endif %}
+        </main>
+
+        <footer class="footer">
+            <p>Tralaladopt · Adopta, conecta y cambia una vida.</p>
+        </footer>
+    </div>
+</div>
+
+</body>
+</html>

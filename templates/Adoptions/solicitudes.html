@@ -12,64 +12,10 @@
     <title>
         Mis solicitudes | Tralaladopt
     </title>
-
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f4f6f8;
-            color: #222;
-        }
-
-        .contenedor {
-            width: 90%;
-            max-width: 950px;
-            margin: 40px auto;
-        }
-
-        .solicitud {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            margin-bottom: 18px;
-            box-shadow: 0 3px 12px rgba(0,0,0,.07);
-        }
-
-        .estado {
-            display: inline-block;
-            padding: 6px 12px;
-            background: #eee;
-            border-radius: 20px;
-        }
-
-        .acciones {
-            margin-top: 18px;
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn,
-        button {
-            border: 0;
-            padding: 10px 15px;
-            border-radius: 7px;
-            background: #222;
-            color: white;
-            text-decoration: none;
-            cursor: pointer;
-        }
-
-        .cancelar {
-            background: #b42318;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 
-<body>
+<body class="page-adoptions">
 
 <main class="contenedor">
 
@@ -97,7 +43,7 @@
 
                 {% endif %}
 
-                <span class="estado">
+                <span class="estado estado-{{ solicitud.estado }}">
                     {{
                         solicitud.estado
                         |replace("_", " ")

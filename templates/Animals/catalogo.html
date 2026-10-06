@@ -13,155 +13,10 @@
     <title>
         Catálogo de Animales | Tralaladopt
     </title>
-
-    <style>
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f4f6f8;
-            color: #242424;
-        }
-
-        header {
-            background: white;
-            padding: 20px 7%;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            box-shadow:
-                0 2px 8px rgba(0,0,0,.08);
-        }
-
-        .logo {
-            font-size: 26px;
-            font-weight: bold;
-        }
-
-        .contenedor {
-            width: 86%;
-            max-width: 1200px;
-            margin: 35px auto;
-        }
-
-        .titulo {
-            display: flex;
-            justify-content:
-                space-between;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .btn {
-            display: inline-block;
-            padding: 12px 18px;
-            border-radius: 8px;
-            border: 0;
-            background: #222;
-            color: white;
-            text-decoration: none;
-            cursor: pointer;
-        }
-
-        .filtros {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            margin: 25px 0;
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        input,
-        select {
-            padding: 11px;
-            border: 1px solid #ccc;
-            border-radius: 7px;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns:
-                repeat(
-                    auto-fill,
-                    minmax(270px, 1fr)
-                );
-            gap: 22px;
-        }
-
-        .card {
-            background: white;
-            border-radius: 15px;
-            padding: 18px;
-            box-shadow:
-                0 3px 12px rgba(0,0,0,.08);
-            overflow: hidden;
-        }
-
-        .foto-animal {
-            width: 100%;
-            height: 220px;
-            object-fit: cover;
-            border-radius: 11px;
-            margin-bottom: 15px;
-        }
-
-        .sin-foto {
-            width: 100%;
-            height: 220px;
-            border-radius: 11px;
-            background: #eee;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 65px;
-            margin-bottom: 15px;
-        }
-
-        .card h2 {
-            margin-top: 8px;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 6px 11px;
-            background: #eee;
-            border-radius: 20px;
-            font-size: 13px;
-        }
-
-        .acciones {
-            display: flex;
-            gap: 8px;
-            margin-top: 18px;
-            flex-wrap: wrap;
-        }
-
-        .acciones a {
-            text-decoration: none;
-            padding: 9px 13px;
-            background: #eee;
-            border-radius: 7px;
-            color: #222;
-        }
-
-        .vacio {
-            background: white;
-            padding: 45px;
-            text-align: center;
-            border-radius: 12px;
-        }
-
-    </style>
-
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 
-<body>
+<body class="page-catalog">
 
 <header>
 
@@ -193,12 +48,18 @@
 
         </div>
 
-        <a
-            class="btn"
-            href="{{ url_for('nuevo_animal') }}"
-        >
-            + Agregar animal
-        </a>
+        {% set role = session.get("user_role", "")|lower %}
+
+        {% if role in ["fundacion", "administrador", "admin"] %}
+
+            <a
+                class="btn"
+                href="{{ url_for('nuevo_animal') }}"
+            >
+                + Agregar animal
+            </a>
+
+        {% endif %}
 
     </div>
 
@@ -298,7 +159,7 @@
                     {% endif %}
 
 
-                    <span class="badge">
+                    <span class="badge vulnerabilidad-{{ animal.vulnerabilidad }}">
 
                         Vulnerabilidad:
                         {{
@@ -353,11 +214,13 @@
                             Estado:
                         </strong>
 
-                        {{
-                            animal.estado
-                            |replace("_", " ")
-                            |capitalize
-                        }}
+                        <span class="estado estado-{{ animal.estado }}">
+                            {{
+                                animal.estado
+                                |replace("_", " ")
+                                |capitalize
+                            }}
+                        </span>
                     </p>
 
 
@@ -371,6 +234,25 @@
                         >
                             Ver ficha
                         </a>
+
+                        {% if
+                            role in ["administrador", "admin"]
+                            or (
+                                role == "fundacion"
+                                and session.get("user_id") == animal.fundacion_id
+                            )
+                        %}
+
+                            <a
+                                href="{{ url_for(
+                                'editar_animal',
+                                animal_id=animal.id
+                                ) }}"
+                            >
+                                Editar
+                            </a>
+
+                        {% endif %}
 
                         <a
                             href="{{ url_for(

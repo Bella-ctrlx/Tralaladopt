@@ -17,6 +17,9 @@ def registrar_rutas_favoritos(app, supabase):
         if not user_id:
             return redirect(url_for("login"))
 
+        if session.get("user_role") != "adoptante":
+            return redirect(url_for("inicio"))
+
         if not supabase:
             return "Base de datos no disponible", 500
 
@@ -49,7 +52,7 @@ def registrar_rutas_favoritos(app, supabase):
             )
 
             return render_template(
-                "favorites/favoritos.html",
+                "Favorites/Favoritos.html",
                 favoritos=respuesta.data,
             )
 
@@ -72,6 +75,9 @@ def registrar_rutas_favoritos(app, supabase):
         if not user_id:
             return redirect(url_for("login"))
 
+        if session.get("user_role") != "adoptante":
+            return redirect(url_for("inicio"))
+
         if not supabase:
             return "Base de datos no disponible", 500
 
@@ -81,13 +87,16 @@ def registrar_rutas_favoritos(app, supabase):
             animal = (
                 supabase
                 .table("animales")
-                .select("id")
+                .select("id,estado")
                 .eq("id", animal_id)
                 .execute()
             )
 
             if not animal.data:
                 return "Animal no encontrado", 404
+
+            if animal.data[0].get("estado") == "adoptado":
+                return "No puedes agregar a favoritos un animal adoptado.", 400
 
             # Verificar si ya está guardado
             favorito_existente = (
@@ -148,6 +157,9 @@ def registrar_rutas_favoritos(app, supabase):
 
         if not user_id:
             return redirect(url_for("login"))
+
+        if session.get("user_role") != "adoptante":
+            return redirect(url_for("inicio"))
 
         if not supabase:
             return "Base de datos no disponible", 500

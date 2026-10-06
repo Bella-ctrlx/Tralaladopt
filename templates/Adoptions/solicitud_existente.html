@@ -3,46 +3,15 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>
         Solicitud existente | Tralaladopt
     </title>
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f8;
-        }
-
-        .contenedor {
-            max-width: 650px;
-            margin: 70px auto;
-            padding: 35px;
-            background: white;
-            border-radius: 14px;
-            text-align: center;
-        }
-
-        .estado {
-            display: inline-block;
-            padding: 8px 15px;
-            background: #eee;
-            border-radius: 20px;
-        }
-
-        .btn {
-            display: inline-block;
-            margin-top: 25px;
-            background: #222;
-            color: white;
-            padding: 12px 18px;
-            border-radius: 8px;
-            text-decoration: none;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 
-<body>
+<body class="page-adoption-existing">
 
 <div class="contenedor">
 
@@ -55,7 +24,7 @@
         <strong>{{ animal.nombre }}</strong>.
     </p>
 
-    <span class="estado">
+    <span class="estado estado-{{ solicitud.estado }}">
         Estado:
         {{
             solicitud.estado
