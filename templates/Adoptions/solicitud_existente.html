@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+
+    <title>
+        Solicitud existente | Tralaladopt
+    </title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+        }
+
+        .contenedor {
+            max-width: 650px;
+            margin: 70px auto;
+            padding: 35px;
+            background: white;
+            border-radius: 14px;
+            text-align: center;
+        }
+
+        .estado {
+            display: inline-block;
+            padding: 8px 15px;
+            background: #eee;
+            border-radius: 20px;
+        }
+
+        .btn {
+            display: inline-block;
+            margin-top: 25px;
+            background: #222;
+            color: white;
+            padding: 12px 18px;
+            border-radius: 8px;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="contenedor">
+
+    <h1>
+        Ya tienes una solicitud
+    </h1>
+
+    <p>
+        Ya existe una solicitud activa para
+        <strong>{{ animal.nombre }}</strong>.
+    </p>
+
+    <span class="estado">
+        Estado:
+        {{
+            solicitud.estado
+            |replace("_", " ")
+            |capitalize
+        }}
+    </span>
+
+    <br>
+
+    <a
+        class="btn"
+        href="{{ url_for('mis_solicitudes') }}"
+    >
+        Ver mis solicitudes
+    </a>
+
+</div>
+
+</body>
+</html>

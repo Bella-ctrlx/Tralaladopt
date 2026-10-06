@@ -352,7 +352,7 @@ def _pagina(seccion: str, **contexto):
         "historial": None,
     }
     base.update(contexto)
-    return render_template("fundaciones.html", **base)
+    return render_template("Fundations/fundaciones.html", **base)
 
 
 @fundaciones_bp.route("/")

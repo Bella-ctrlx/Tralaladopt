@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        {{ animal.nombre }} | Tralaladopt
+    </title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            color: #222;
+        }
+
+        .contenedor {
+            max-width: 850px;
+            margin: 50px auto;
+            background: white;
+            padding: 35px;
+            border-radius: 15px;
+            box-shadow:
+                0 3px 15px rgba(0,0,0,.08);
+        }
+
+        .foto-principal {
+            width: 100%;
+            max-height: 480px;
+            object-fit: cover;
+            border-radius: 14px;
+            margin-bottom: 25px;
+        }
+
+        .sin-foto {
+            width: 100%;
+            height: 350px;
+            background: #eee;
+            border-radius: 14px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 90px;
+            margin-bottom: 25px;
+        }
+
+        h1 {
+            margin-top: 12px;
+            font-size: 38px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 7px 12px;
+            background: #eee;
+            border-radius: 20px;
+        }
+
+        .datos {
+            display: grid;
+            grid-template-columns:
+                1fr 1fr;
+            gap: 17px;
+            margin: 25px 0;
+        }
+
+        .dato {
+            padding: 13px;
+            background: #f7f7f7;
+            border-radius: 8px;
+        }
+
+        .seccion {
+            margin-top: 27px;
+        }
+
+        .seccion p {
+            line-height: 1.6;
+        }
+
+        .acciones {
+            display: flex;
+            gap: 10px;
+            margin-top: 32px;
+            flex-wrap: wrap;
+        }
+
+        .btn,
+        button {
+            border: 0;
+            padding: 12px 18px;
+            border-radius: 8px;
+            background: #222;
+            color: white;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .eliminar {
+            background: #b42318;
+        }
+
+        @media (
+            max-width: 650px
+        ) {
+
+            .contenedor {
+                margin: 20px;
+            }
+
+            .datos {
+                grid-template-columns:
+                    1fr;
+            }
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<main class="contenedor">
+
+    <!-- FOTO -->
+
+    {% if animal.fotos
+        and animal.fotos|length > 0
+    %}
+
+        <img
+            src="{{ animal.fotos[0] }}"
+            alt="Foto de {{ animal.nombre }}"
+            class="foto-principal"
+        >
+
+    {% else %}
+
+        <div class="sin-foto">
+            🐾
+        </div>
+
+    {% endif %}
+
+
+    <span class="badge">
+
+        Vulnerabilidad:
+        {{ animal.vulnerabilidad|capitalize }}
+
+    </span>
+
+
+    <h1>
+        {{ animal.nombre }}
+    </h1>
+
+
+    <div class="datos">
+
+        <div class="dato">
+
+            <strong>
+                Especie:
+            </strong>
+
+            {{ animal.especie }}
+
+        </div>
+
+
+        <div class="dato">
+
+            <strong>
+                Raza:
+            </strong>
+
+            {{
+                animal.raza
+                or "No especificada"
+            }}
+
+        </div>
+
+
+        <div class="dato">
+
+            <strong>
+                Edad:
+            </strong>
+
+            {% if animal.edad is not none %}
+                {{ animal.edad }}
+            {% else %}
+                No especificada
+            {% endif %}
+
+        </div>
+
+
+        <div class="dato">
+
+            <strong>
+                Género:
+            </strong>
+
+            {{
+                animal.genero
+                or "No especificado"
+            }}
+
+        </div>
+
+
+        <div class="dato">
+
+            <strong>
+                Tamaño:
+            </strong>
+
+            {{
+                animal.tamano
+                or "No especificado"
+            }}
+
+        </div>
+
+
+        <div class="dato">
+
+            <strong>
+                Color:
+            </strong>
+
+            {{
+                animal.color
+                or "No especificado"
+            }}
+
+        </div>
+
+
+        <div class="dato">
+
+            <strong>
+                Ubicación:
+            </strong>
+
+            {{
+                animal.ubicacion
+                or "No especificada"
+            }}
+
+        </div>
+
+
+        <div class="dato">
+
+            <strong>
+                Estado:
+            </strong>
+
+            {{
+                animal.estado
+                |replace("_", " ")
+                |capitalize
+            }}
+
+        </div>
+
+    </div>
+
+
+    <section class="seccion">
+
+        <h3>
+            Descripción
+        </h3>
+
+        <p>
+            {{
+                animal.descripcion
+                or "Sin descripción."
+            }}
+        </p>
+
+    </section>
+
+
+    <section class="seccion">
+
+        <h3>
+            Personalidad
+        </h3>
+
+        <p>
+            {{
+                animal.personalidad
+                or "No especificada."
+            }}
+        </p>
+
+    </section>
+
+
+    <section class="seccion">
+
+        <h3>
+            Estado de salud
+        </h3>
+
+        <p>
+            {{
+                animal.estado_salud
+                or "No especificado."
+            }}
+        </p>
+
+    </section>
+
+
+    <section class="seccion">
+
+        <h3>
+            Necesidades especiales
+        </h3>
+
+        <p>
+            {{
+                animal.necesidades_especiales
+                or "Ninguna especificada."
+            }}
+        </p>
+
+    </section>
+
+
+    <div class="acciones">
+        
+
+        <a
+            class="btn"
+            href="{{ url_for(
+                'catalogo_animales'
+            ) }}"
+        >
+            ← Volver
+        </a>
+
+
+        <a
+            class="btn"
+            href="{{ url_for(
+                'editar_animal',
+                animal_id=animal.id
+            ) }}"
+        >
+            Editar
+        </a>
+
+
+        <form
+            method="POST"
+            action="{{ url_for(
+                'eliminar_animal_web',
+                animal_id=animal.id
+            ) }}"
+            onsubmit="
+                return confirm(
+                    '¿Seguro que deseas eliminar este animal?'
+                );
+            "
+        >
+
+            <button
+                class="eliminar"
+                type="submit"
+            >
+                Eliminar
+            </button>
+
+        </form>
+
+        <form
+            method="POST"
+            action="{{ url_for(
+            'agregar_favorito',
+            animal_id=animal.id
+            
+            ) }}"
+        >
+            <button type="submit">
+                ❤️ Agregar a favoritos
+            </button>
+
+        </form>
+
+        <a
+            class="btn"
+            href="{{ url_for(
+                'solicitar_adopcion',
+                animal_id=animal.id
+            ) }}"
+        >
+            🏠 Solicitar adopción
+        </a>    
+
+    </div>
+
+</main>
+
+</body>
+</html>

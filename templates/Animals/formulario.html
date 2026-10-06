@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        {% if modo == "editar" %}
+            Editar animal
+        {% else %}
+            Registrar animal
+        {% endif %}
+        | Tralaladopt
+    </title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            color: #222;
+        }
+
+        header {
+            background: white;
+            padding: 18px 7%;
+            box-shadow:
+                0 2px 8px rgba(0,0,0,.08);
+        }
+
+        .logo {
+            font-size: 25px;
+            font-weight: bold;
+        }
+
+        .contenedor {
+            max-width: 900px;
+            margin: 40px auto;
+            background: white;
+            padding: 35px;
+            border-radius: 15px;
+            box-shadow:
+                0 3px 15px rgba(0,0,0,.08);
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        .subtitulo {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns:
+                1fr 1fr;
+            gap: 20px;
+        }
+
+        .campo {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .completo {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-weight: bold;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border:
+                1px solid #ccc;
+            border-radius: 8px;
+            font: inherit;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: 2px solid #333;
+            border-color: #333;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        input[type="file"] {
+            background: #f8f8f8;
+            border:
+                2px dashed #bbb;
+            padding: 20px;
+        }
+
+        .foto-actual {
+            margin-top: 12px;
+        }
+
+        .foto-actual img {
+            width: 180px;
+            height: 140px;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+
+        small {
+            color: #666;
+        }
+
+        .advertencia {
+            background: #fff3cd;
+            border: 1px solid #ffe69c;
+            padding: 12px;
+            border-radius: 7px;
+            margin-top: 8px;
+        }
+
+        .acciones {
+            display: flex;
+            gap: 12px;
+            margin-top: 30px;
+        }
+
+        button,
+        .btn {
+            padding: 13px 20px;
+            border: 0;
+            border-radius: 8px;
+            background: #222;
+            color: white;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        button:disabled {
+            background: #aaa;
+            cursor: not-allowed;
+        }
+
+        .secundario {
+            background: #666;
+        }
+
+        @media (
+            max-width: 650px
+        ) {
+
+            .contenedor {
+                margin: 20px;
+                padding: 25px;
+            }
+
+            .grid {
+                grid-template-columns:
+                    1fr;
+            }
+
+            .completo {
+                grid-column: auto;
+            }
+        }
+
+    </style>
+</head>
+
+<body>
+
+<header>
+    <div class="logo">
+        🐾 Tralaladopt
+    </div>
+</header>
+
+<main class="contenedor">
+
+    <h1>
+        {% if modo == "editar" %}
+            Editar animal
+        {% else %}
+            Registrar nuevo animal
+        {% endif %}
+    </h1>
+
+    <p class="subtitulo">
+        Completa la información de la mascota.
+    </p>
+
+    <!--
+        IMPORTANTE:
+        multipart/form-data permite
+        enviar archivos a Flask.
+    -->
+
+    <form
+        method="POST"
+        enctype="multipart/form-data"
+    >
+
+        <div class="grid">
+
+            <!-- NOMBRE -->
+
+            <div class="campo">
+
+                <label>
+                    Nombre *
+                </label>
+
+                <input
+                    type="text"
+                    name="nombre"
+                    required
+                    value="{{ animal.nombre if animal else '' }}"
+                >
+
+            </div>
+
+
+            <!-- ESPECIE -->
+
+            <div class="campo">
+
+                <label>
+                    Especie *
+                </label>
+
+                <input
+                    type="text"
+                    name="especie"
+                    required
+                    placeholder="Ej: Perro"
+                    value="{{ animal.especie if animal else '' }}"
+                >
+
+            </div>
+
+
+            <!-- RAZA -->
+
+            <div class="campo">
+
+                <label>
+                    Raza
+                </label>
+
+                <input
+                    type="text"
+                    name="raza"
+                    value="{{ animal.raza if animal and animal.raza else '' }}"
+                >
+
+            </div>
+
+
+            <!-- EDAD -->
+
+            <div class="campo">
+
+                <label>
+                    Edad
+                </label>
+
+                <input
+                    type="number"
+                    min="0"
+                    name="edad"
+                    value="{{ animal.edad if animal and animal.edad is not none else '' }}"
+                >
+
+            </div>
+
+
+            <!-- GENERO -->
+
+            <div class="campo">
+
+                <label>
+                    Género
+                </label>
+
+                <select name="genero">
+
+                    <option value="">
+                        Seleccionar
+                    </option>
+
+                    <option
+                        value="Macho"
+                        {% if animal and animal.genero == "Macho" %}
+                            selected
+                        {% endif %}
+                    >
+                        Macho
+                    </option>
+
+                    <option
+                        value="Hembra"
+                        {% if animal and animal.genero == "Hembra" %}
+                            selected
+                        {% endif %}
+                    >
+                        Hembra
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <!-- TAMAÑO -->
+
+            <div class="campo">
+
+                <label>
+                    Tamaño
+                </label>
+
+                <select name="tamano">
+
+                    <option value="">
+                        Seleccionar
+                    </option>
+
+                    {% for opcion in [
+                        "Pequeño",
+                        "Mediano",
+                        "Grande"
+                    ] %}
+
+                        <option
+                            value="{{ opcion }}"
+                            {% if animal and animal.tamano == opcion %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ opcion }}
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <!-- COLOR -->
+
+            <div class="campo">
+
+                <label>
+                    Color
+                </label>
+
+                <input
+                    type="text"
+                    name="color"
+                    value="{{ animal.color if animal and animal.color else '' }}"
+                >
+
+            </div>
+
+
+            <!-- UBICACION -->
+
+            <div class="campo">
+
+                <label>
+                    Ubicación
+                </label>
+
+                <input
+                    type="text"
+                    name="ubicacion"
+                    placeholder="Ej: Panamá"
+                    value="{{ animal.ubicacion if animal and animal.ubicacion else '' }}"
+                >
+
+            </div>
+
+
+            <!-- VULNERABILIDAD -->
+
+            <div class="campo">
+
+                <label>
+                    Vulnerabilidad *
+                </label>
+
+                <select
+                    name="vulnerabilidad"
+                    required
+                >
+
+                    {% for nivel in [
+                        "baja",
+                        "media",
+                        "alta"
+                    ] %}
+
+                        <option
+                            value="{{ nivel }}"
+                            {% if animal and animal.vulnerabilidad == nivel %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ nivel|capitalize }}
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <!-- ESTADO -->
+
+            <div class="campo">
+
+                <label>
+                    Estado
+                </label>
+
+                <select name="estado">
+
+                    {% for opcion in [
+                        "disponible",
+                        "en_proceso",
+                        "adoptado"
+                    ] %}
+
+                        <option
+                            value="{{ opcion }}"
+                            {% if animal and animal.estado == opcion %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ opcion
+                                |replace("_", " ")
+                                |capitalize
+                            }}
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <!-- FUNDACION -->
+
+            <div class="campo completo">
+
+                <label>
+                    Fundación *
+                </label>
+
+                <select
+                    name="fundacion_id"
+                    required
+                >
+
+                    <option value="">
+                        Selecciona una fundación
+                    </option>
+
+                    {% for fundacion in fundaciones %}
+
+                        <option
+                            value="{{ fundacion.id }}"
+                            {% if animal and animal.fundacion_id == fundacion.id %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ fundacion.nombre }}
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+                {% if not fundaciones %}
+
+                    <div class="advertencia">
+
+                        No existen fundaciones
+                        activas.
+
+                        Debes crear o aprobar
+                        una fundación antes de
+                        registrar animales.
+
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+
+            <!-- FOTO -->
+
+            <div class="campo completo">
+
+                <label>
+                    Fotografía del animal
+                </label>
+
+                <input
+                    type="file"
+                    name="foto"
+                    accept="
+                        image/jpeg,
+                        image/png,
+                        image/webp
+                    "
+                >
+
+                <small>
+                    Formatos permitidos:
+                    JPG, JPEG, PNG y WEBP.
+                </small>
+
+                {% if animal
+                    and animal.fotos
+                    and animal.fotos|length > 0
+                %}
+
+                    <div class="foto-actual">
+
+                        <p>
+                            Foto actual:
+                        </p>
+
+                        <img
+                            src="{{ animal.fotos[0] }}"
+                            alt="Foto de {{ animal.nombre }}"
+                        >
+
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+
+            <!-- DESCRIPCION -->
+
+            <div class="campo completo">
+
+                <label>
+                    Descripción
+                </label>
+
+                <textarea
+                    name="descripcion"
+                >{{ animal.descripcion if animal and animal.descripcion else '' }}</textarea>
+
+            </div>
+
+
+            <!-- PERSONALIDAD -->
+
+            <div class="campo completo">
+
+                <label>
+                    Personalidad
+                </label>
+
+                <textarea
+                    name="personalidad"
+                >{{ animal.personalidad if animal and animal.personalidad else '' }}</textarea>
+
+            </div>
+
+
+            <!-- SALUD -->
+
+            <div class="campo completo">
+
+                <label>
+                    Estado de salud
+                </label>
+
+                <textarea
+                    name="estado_salud"
+                >{{ animal.estado_salud if animal and animal.estado_salud else '' }}</textarea>
+
+            </div>
+
+
+            <!-- NECESIDADES -->
+
+            <div class="campo completo">
+
+                <label>
+                    Necesidades especiales
+                </label>
+
+                <textarea
+                    name="necesidades_especiales"
+                >{{ animal.necesidades_especiales if animal and animal.necesidades_especiales else '' }}</textarea>
+
+            </div>
+
+        </div>
+
+
+        <div class="acciones">
+
+            <button
+                type="submit"
+                {% if not fundaciones %}
+                    disabled
+                {% endif %}
+            >
+
+                {% if modo == "editar" %}
+                    Guardar cambios
+                {% else %}
+                    Registrar animal
+                {% endif %}
+
+            </button>
+
+
+            <a
+                href="{{ url_for('catalogo_animales') }}"
+                class="btn secundario"
+            >
+                Cancelar
+            </a>
+
+        </div>
+
+    </form>
+
+</main>
+
+</body>
+</html>

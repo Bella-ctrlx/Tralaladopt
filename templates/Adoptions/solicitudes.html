@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Mis solicitudes | Tralaladopt
+    </title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            color: #222;
+        }
+
+        .contenedor {
+            width: 90%;
+            max-width: 950px;
+            margin: 40px auto;
+        }
+
+        .solicitud {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 18px;
+            box-shadow: 0 3px 12px rgba(0,0,0,.07);
+        }
+
+        .estado {
+            display: inline-block;
+            padding: 6px 12px;
+            background: #eee;
+            border-radius: 20px;
+        }
+
+        .acciones {
+            margin-top: 18px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn,
+        button {
+            border: 0;
+            padding: 10px 15px;
+            border-radius: 7px;
+            background: #222;
+            color: white;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .cancelar {
+            background: #b42318;
+        }
+    </style>
+</head>
+
+<body>
+
+<main class="contenedor">
+
+    <h1>Mis solicitudes de adopción</h1>
+
+    {% if solicitudes %}
+
+        {% for solicitud in solicitudes %}
+
+            <article class="solicitud">
+
+                {% if solicitud.animales %}
+
+                    <h2>
+                        {{ solicitud.animales.nombre }}
+                    </h2>
+
+                    <p>
+                        {{ solicitud.animales.especie }}
+
+                        {% if solicitud.animales.raza %}
+                            · {{ solicitud.animales.raza }}
+                        {% endif %}
+                    </p>
+
+                {% endif %}
+
+                <span class="estado">
+                    {{
+                        solicitud.estado
+                        |replace("_", " ")
+                        |capitalize
+                    }}
+                </span>
+
+                <p>
+                    <strong>Motivación:</strong>
+                    {{ solicitud.motivacion or "No especificada" }}
+                </p>
+
+                <p>
+                    <strong>Fecha:</strong>
+                    {{ solicitud.fecha_creacion }}
+                </p>
+
+                <div class="acciones">
+
+                    {% if solicitud.animales %}
+
+                        <a
+                            class="btn"
+                            href="{{ url_for(
+                                'detalle_animal',
+                                animal_id=solicitud.animales.id
+                            ) }}"
+                        >
+                            Ver animal
+                        </a>
+
+                    {% endif %}
+
+                    {% if solicitud.estado in [
+                        "pendiente",
+                        "en_revision"
+                    ] %}
+
+                        <form
+                            method="POST"
+                            action="{{ url_for(
+                                'cancelar_solicitud',
+                                solicitud_id=solicitud.id
+                            ) }}"
+                            onsubmit="
+                                return confirm(
+                                    '¿Deseas cancelar esta solicitud?'
+                                );
+                            "
+                        >
+
+                            <button
+                                class="cancelar"
+                                type="submit"
+                            >
+                                Cancelar solicitud
+                            </button>
+
+                        </form>
+
+                    {% endif %}
+
+                </div>
+
+            </article>
+
+        {% endfor %}
+
+    {% else %}
+
+        <div class="solicitud">
+            <h2>
+                Todavía no tienes solicitudes.
+            </h2>
+
+            <a
+                class="btn"
+                href="{{ url_for('catalogo_animales') }}"
+            >
+                Ver animales
+            </a>
+        </div>
+
+    {% endif %}
+
+</main>
+
+</body>
+</html>
