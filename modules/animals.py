@@ -5,6 +5,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    session,
     url_for,
 )
 
@@ -43,7 +44,61 @@ ESTADOS = {
 }
 
 
+# FUNCIONES AUXILIARES
+
+def normalizar_rol(rol):
+    """
+    Convierte el rol a un formato uniforme.
+    También permite trabajar con cuentas antiguas
+    que tengan el rol 'admin'.
+    """
+
+    if not rol:
+        return ""
+
+    rol = str(rol).strip().lower()
+
+    if rol == "admin":
+        return "administrador"
+
+    return rol
+
+
+def usuario_puede_gestionar_animal(animal):
+    """
+    Administrador:
+        Puede gestionar cualquier animal.
+
+    Fundación:
+        Solo puede gestionar animales pertenecientes
+        a su propia cuenta.
+
+    Adoptante:
+        No puede gestionar animales.
+    """
+
+    user_id = session.get("user_id")
+
+    user_role = normalizar_rol(
+        session.get("user_role")
+    )
+
+    if not user_id:
+        return False
+
+    if user_role == "administrador":
+        return True
+
+    if (
+        user_role == "fundacion"
+        and animal.get("fundacion_id") == user_id
+    ):
+        return True
+
+    return False
+
 # SUBIR FOTO A SUPABASE STORAGE
+
 def subir_foto_animal(supabase, archivo):
 
     if not archivo or not archivo.filename:
@@ -73,7 +128,9 @@ def subir_foto_animal(supabase, archivo):
             "Usa JPG, JPEG, PNG o WEBP."
         )
 
-    nombre_archivo = f"{uuid.uuid4()}.{extension}"
+    nombre_archivo = (
+        f"{uuid.uuid4()}.{extension}"
+    )
 
     contenido = archivo.read()
 
@@ -98,7 +155,6 @@ def subir_foto_animal(supabase, archivo):
 
     return url_foto
 
-
 # PREPARAR DATOS DEL ANIMAL
 
 def preparar_datos_animal(datos):
@@ -107,6 +163,7 @@ def preparar_datos_animal(datos):
 
     if edad in ("", None):
         edad = None
+
     else:
         try:
             edad = int(edad)
@@ -191,13 +248,13 @@ def preparar_datos_animal(datos):
             datos.get("fundacion_id"),
     }
 
-
 # REGISTRAR RUTAS
 
 def registrar_rutas_animales(app, supabase):
 
 
     # API - LISTAR ANIMALES
+
     @app.route(
         "/api/animales",
         methods=["GET"]
@@ -304,6 +361,7 @@ def registrar_rutas_animales(app, supabase):
 
 
     # API - OBTENER ANIMAL
+
     @app.route(
         "/api/animales/<animal_id>",
         methods=["GET"]
@@ -345,6 +403,7 @@ def registrar_rutas_animales(app, supabase):
 
 
     # API - CREAR ANIMAL
+
     @app.route(
         "/api/animales",
         methods=["POST"]
@@ -358,6 +417,29 @@ def registrar_rutas_animales(app, supabase):
                     "no disponible"
             }), 500
 
+        user_id = session.get("user_id")
+
+        user_role = normalizar_rol(
+            session.get("user_role")
+        )
+
+        if not user_id:
+            return jsonify({
+                "error":
+                    "Debes iniciar sesión"
+            }), 401
+
+        # Adoptantes no pueden crear animales
+        if user_role not in (
+            "fundacion",
+            "administrador",
+        ):
+            return jsonify({
+                "error":
+                    "No tienes permiso para "
+                    "registrar animales"
+            }), 403
+
         try:
 
             datos = (
@@ -366,6 +448,11 @@ def registrar_rutas_animales(app, supabase):
                 )
                 or {}
             )
+
+            # La fundación solo puede registrar
+            # animales para ella misma.
+            if user_role == "fundacion":
+                datos["fundacion_id"] = user_id
 
             obligatorios = [
                 "nombre",
@@ -380,7 +467,6 @@ def registrar_rutas_animales(app, supabase):
             ]
 
             if faltantes:
-
                 return jsonify({
                     "error":
                         "Faltan campos obligatorios",
@@ -393,12 +479,18 @@ def registrar_rutas_animales(app, supabase):
                 datos
             )
 
-            fotos = datos.get("fotos", [])
+            fotos = datos.get(
+                "fotos",
+                []
+            )
 
             if fotos is None:
                 fotos = []
 
-            if not isinstance(fotos, list):
+            if not isinstance(
+                fotos,
+                list
+            ):
                 return jsonify({
                     "error":
                         "fotos debe ser "
@@ -436,6 +528,7 @@ def registrar_rutas_animales(app, supabase):
 
 
     # API - ACTUALIZAR ANIMAL
+
     @app.route(
         "/api/animales/<animal_id>",
         methods=["PUT", "PATCH"]
@@ -449,7 +542,46 @@ def registrar_rutas_animales(app, supabase):
                     "no disponible"
             }), 500
 
+        user_id = session.get("user_id")
+
+        user_role = normalizar_rol(
+            session.get("user_role")
+        )
+
+        if not user_id:
+            return jsonify({
+                "error":
+                    "Debes iniciar sesión"
+            }), 401
+
         try:
+
+            existente = (
+                supabase
+                .table("animales")
+                .select("*")
+                .eq("id", animal_id)
+                .execute()
+            )
+
+            if not existente.data:
+                return jsonify({
+                    "error":
+                        "Animal no encontrado"
+                }), 404
+
+            animal_actual = (
+                existente.data[0]
+            )
+
+            if not usuario_puede_gestionar_animal(
+                animal_actual
+            ):
+                return jsonify({
+                    "error":
+                        "No tienes permiso para "
+                        "editar este animal"
+                }), 403
 
             datos = (
                 request.get_json(
@@ -464,6 +596,11 @@ def registrar_rutas_animales(app, supabase):
                 if k in CAMPOS_PERMITIDOS
             }
 
+            # Fundación no puede cambiar
+            # el propietario del animal.
+            if user_role == "fundacion":
+                cambios["fundacion_id"] = user_id
+
             if not cambios:
 
                 return jsonify({
@@ -477,11 +614,13 @@ def registrar_rutas_animales(app, supabase):
                 edad = cambios["edad"]
 
                 if edad in ("", None):
+
                     cambios["edad"] = None
 
                 else:
 
                     try:
+
                         edad = int(edad)
 
                         if edad < 0:
@@ -491,6 +630,7 @@ def registrar_rutas_animales(app, supabase):
                         ValueError,
                         TypeError
                     ):
+
                         return jsonify({
                             "error":
                                 "Edad inválida"
@@ -524,7 +664,6 @@ def registrar_rutas_animales(app, supabase):
                 ).lower()
 
                 if estado not in ESTADOS:
-
                     return jsonify({
                         "error":
                             "Estado inválido"
@@ -541,27 +680,11 @@ def registrar_rutas_animales(app, supabase):
                         list
                     )
                 ):
-
                     return jsonify({
                         "error":
                             "fotos debe ser "
                             "una lista de URLs"
                     }), 400
-
-            existe = (
-                supabase
-                .table("animales")
-                .select("id")
-                .eq("id", animal_id)
-                .execute()
-            )
-
-            if not existe.data:
-
-                return jsonify({
-                    "error":
-                        "Animal no encontrado"
-                }), 404
 
             respuesta = (
                 supabase
@@ -587,6 +710,7 @@ def registrar_rutas_animales(app, supabase):
 
 
     # API - ELIMINAR ANIMAL
+
     @app.route(
         "/api/animales/<animal_id>",
         methods=["DELETE"]
@@ -600,28 +724,54 @@ def registrar_rutas_animales(app, supabase):
                     "no disponible"
             }), 500
 
+        user_id = session.get("user_id")
+
+        if not user_id:
+            return jsonify({
+                "error":
+                    "Debes iniciar sesión"
+            }), 401
+
         try:
 
-            existe = (
+            respuesta = (
                 supabase
                 .table("animales")
-                .select("id")
-                .eq("id", animal_id)
+                .select(
+                    "id,fundacion_id"
+                )
+                .eq(
+                    "id",
+                    animal_id
+                )
                 .execute()
             )
 
-            if not existe.data:
-
+            if not respuesta.data:
                 return jsonify({
                     "error":
                         "Animal no encontrado"
                 }), 404
 
+            animal = respuesta.data[0]
+
+            if not usuario_puede_gestionar_animal(
+                animal
+            ):
+                return jsonify({
+                    "error":
+                        "No tienes permiso para "
+                        "eliminar este animal"
+                }), 403
+
             (
                 supabase
                 .table("animales")
                 .delete()
-                .eq("id", animal_id)
+                .eq(
+                    "id",
+                    animal_id
+                )
                 .execute()
             )
 
@@ -638,6 +788,7 @@ def registrar_rutas_animales(app, supabase):
 
 
     # WEB - CATÁLOGO
+
     @app.route("/animales")
     def catalogo_animales():
 
@@ -680,7 +831,9 @@ def registrar_rutas_animales(app, supabase):
                     vulnerabilidad
                 )
 
-            respuesta = consulta.execute()
+            respuesta = (
+                consulta.execute()
+            )
 
             return render_template(
                 "Animals/catalogo.html",
@@ -696,13 +849,38 @@ def registrar_rutas_animales(app, supabase):
                 500
             )
 
-
     # WEB - NUEVO ANIMAL
+
     @app.route(
         "/animales/nuevo",
         methods=["GET", "POST"]
     )
     def nuevo_animal():
+
+        user_id = session.get(
+            "user_id"
+        )
+
+        user_role = normalizar_rol(
+            session.get("user_role")
+        )
+
+        if not user_id:
+            return redirect(
+                url_for("login")
+            )
+
+        # ADOPTANTE NO PUEDE REGISTRAR ANIMALES
+
+        if user_role not in (
+            "fundacion",
+            "administrador",
+        ):
+            return redirect(
+                url_for(
+                    "catalogo_animales"
+                )
+            )
 
         if not supabase:
             return (
@@ -713,19 +891,70 @@ def registrar_rutas_animales(app, supabase):
 
         try:
 
-            fundaciones = (
-                supabase
-                .table("users")
-                .select("id,nombre")
-                .eq("rol", "fundacion")
-                .eq("estado", "activo")
-                .execute()
-                .data
-            )
+            # ADMINISTRADOR
+            # Puede elegir cualquier fundación activa
+
+            if user_role == "administrador":
+
+                fundaciones = (
+                    supabase
+                    .table("users")
+                    .select(
+                        "id,nombre"
+                    )
+                    .eq(
+                        "rol",
+                        "fundacion"
+                    )
+                    .eq(
+                        "estado",
+                        "activo"
+                    )
+                    .execute()
+                    .data
+                )
+
+            # FUNDACIÓN
+            # Solo puede registrar animales para sí
+            # misma.
+            
+            else:
+
+                perfil_fundacion = (
+                    supabase
+                    .table("users")
+                    .select(
+                        "id,nombre"
+                    )
+                    .eq(
+                        "id",
+                        user_id
+                    )
+                    .execute()
+                    .data
+                )
+
+                fundaciones = (
+                    perfil_fundacion
+                    if perfil_fundacion
+                    else []
+                )
 
             if request.method == "POST":
 
+                fundacion_id = (
+                    request.form.get(
+                        "fundacion_id"
+                    )
+                )
+
+                # Una fundación nunca puede
+                # registrar un animal para otra.
+                if user_role == "fundacion":
+                    fundacion_id = user_id
+
                 datos = {
+
                     "nombre":
                         request.form.get(
                             "nombre"
@@ -797,9 +1026,7 @@ def registrar_rutas_animales(app, supabase):
                         ),
 
                     "fundacion_id":
-                        request.form.get(
-                            "fundacion_id"
-                        ),
+                        fundacion_id,
                 }
 
                 if (
@@ -821,13 +1048,17 @@ def registrar_rutas_animales(app, supabase):
 
                 if foto and foto.filename:
 
-                    url_foto = subir_foto_animal(
-                        supabase,
-                        foto
+                    url_foto = (
+                        subir_foto_animal(
+                            supabase,
+                            foto
+                        )
                     )
 
-                datos = preparar_datos_animal(
-                    datos
+                datos = (
+                    preparar_datos_animal(
+                        datos
+                    )
                 )
 
                 if url_foto:
@@ -871,8 +1102,8 @@ def registrar_rutas_animales(app, supabase):
                 500
             )
 
-
     # WEB - DETALLE
+
     @app.route(
         "/animales/<animal_id>"
     )
@@ -891,7 +1122,10 @@ def registrar_rutas_animales(app, supabase):
                 supabase
                 .table("animales")
                 .select("*")
-                .eq("id", animal_id)
+                .eq(
+                    "id",
+                    animal_id
+                )
                 .execute()
             )
 
@@ -914,13 +1148,26 @@ def registrar_rutas_animales(app, supabase):
                 500
             )
 
-
     # WEB - EDITAR
+
     @app.route(
         "/animales/<animal_id>/editar",
         methods=["GET", "POST"]
     )
     def editar_animal(animal_id):
+
+        user_id = session.get(
+            "user_id"
+        )
+
+        user_role = normalizar_rol(
+            session.get("user_role")
+        )
+
+        if not user_id:
+            return redirect(
+                url_for("login")
+            )
 
         if not supabase:
             return (
@@ -935,7 +1182,10 @@ def registrar_rutas_animales(app, supabase):
                 supabase
                 .table("animales")
                 .select("*")
-                .eq("id", animal_id)
+                .eq(
+                    "id",
+                    animal_id
+                )
                 .execute()
             )
 
@@ -950,19 +1200,87 @@ def registrar_rutas_animales(app, supabase):
                 animal_respuesta.data[0]
             )
 
-            fundaciones = (
-                supabase
-                .table("users")
-                .select("id,nombre")
-                .eq("rol", "fundacion")
-                .eq("estado", "activo")
-                .execute()
-                .data
-            )
+            # PERMISOS
+            #
+            # Adoptante:
+            # NO puede editar.
+            #
+            # Fundación:
+            # solo sus animales.
+            #
+            # Administrador:
+            # cualquiera.
+
+            if not usuario_puede_gestionar_animal(
+                animal
+            ):
+                return (
+                    "No tienes permiso para "
+                    "editar este animal.",
+                    403
+                )
+
+            # ADMINISTRADOR
+            # Puede cambiar la fundación responsable
+
+            if user_role == "administrador":
+
+                fundaciones = (
+                    supabase
+                    .table("users")
+                    .select(
+                        "id,nombre"
+                    )
+                    .eq(
+                        "rol",
+                        "fundacion"
+                    )
+                    .eq(
+                        "estado",
+                        "activo"
+                    )
+                    .execute()
+                    .data
+                )
+
+            # FUNDACIÓN
+            # Solo aparece ella misma
+
+            else:
+
+                perfil_fundacion = (
+                    supabase
+                    .table("users")
+                    .select(
+                        "id,nombre"
+                    )
+                    .eq(
+                        "id",
+                        user_id
+                    )
+                    .execute()
+                    .data
+                )
+
+                fundaciones = (
+                    perfil_fundacion
+                    if perfil_fundacion
+                    else []
+                )
 
             if request.method == "POST":
 
+                fundacion_id = (
+                    request.form.get(
+                        "fundacion_id"
+                    )
+                )
+
+                if user_role == "fundacion":
+                    fundacion_id = user_id
+
                 datos = {
+
                     "nombre":
                         request.form.get(
                             "nombre"
@@ -1034,9 +1352,7 @@ def registrar_rutas_animales(app, supabase):
                         ),
 
                     "fundacion_id":
-                        request.form.get(
-                            "fundacion_id"
-                        ),
+                        fundacion_id,
                 }
 
                 if (
@@ -1050,8 +1366,10 @@ def registrar_rutas_animales(app, supabase):
                         400
                     )
 
-                datos = preparar_datos_animal(
-                    datos
+                datos = (
+                    preparar_datos_animal(
+                        datos
+                    )
                 )
 
                 foto = request.files.get(
@@ -1060,9 +1378,11 @@ def registrar_rutas_animales(app, supabase):
 
                 if foto and foto.filename:
 
-                    url_foto = subir_foto_animal(
-                        supabase,
-                        foto
+                    url_foto = (
+                        subir_foto_animal(
+                            supabase,
+                            foto
+                        )
                     )
 
                     fotos_actuales = (
@@ -1082,7 +1402,10 @@ def registrar_rutas_animales(app, supabase):
                     supabase
                     .table("animales")
                     .update(datos)
-                    .eq("id", animal_id)
+                    .eq(
+                        "id",
+                        animal_id
+                    )
                     .execute()
                 )
 
@@ -1111,8 +1434,8 @@ def registrar_rutas_animales(app, supabase):
                 500
             )
 
-
     # WEB - ELIMINAR
+    
     @app.route(
         "/animales/<animal_id>/eliminar",
         methods=["POST"]
@@ -1126,13 +1449,56 @@ def registrar_rutas_animales(app, supabase):
                 500
             )
 
+        user_id = session.get(
+            "user_id"
+        )
+
+        if not user_id:
+            return redirect(
+                url_for("login")
+            )
+
         try:
+
+            respuesta = (
+                supabase
+                .table("animales")
+                .select(
+                    "id,fundacion_id"
+                )
+                .eq(
+                    "id",
+                    animal_id
+                )
+                .execute()
+            )
+
+            if not respuesta.data:
+
+                return (
+                    "Animal no encontrado",
+                    404
+                )
+
+            animal = respuesta.data[0]
+
+            if not usuario_puede_gestionar_animal(
+                animal
+            ):
+                return (
+                    "No tienes permiso para "
+                    "eliminar este animal.",
+                    403
+                )
 
             (
                 supabase
                 .table("animales")
                 .delete()
-                .eq("id", animal_id)
+                .eq(
+                    "id",
+                    animal_id
+                )
                 .execute()
             )
 

@@ -28,6 +28,9 @@ def registrar_rutas_adopciones(app, supabase):
         if not user_id:
             return redirect(url_for("login"))
 
+        if session.get("user_role") != "adoptante":
+            return redirect(url_for("inicio"))
+
         if not supabase:
             return "Base de datos no disponible", 500
 
@@ -54,7 +57,7 @@ def registrar_rutas_adopciones(app, supabase):
             # Solo animales disponibles
             # -----------------------------------------
 
-            if animal["estado"] != "disponible":
+            if animal["estado"] not in ("disponible", "en_proceso"):
                 return (
                     "Este animal actualmente "
                     "no está disponible para adopción.",
@@ -85,7 +88,7 @@ def registrar_rutas_adopciones(app, supabase):
             if solicitud_existente.data:
 
                 return render_template(
-                    "adoptions/solicitud_existente.html",
+                    "Adoptions/solicitud_existente.html",
                     animal=animal,
                     solicitud=solicitud_existente.data[0],
                 )
@@ -153,7 +156,7 @@ def registrar_rutas_adopciones(app, supabase):
             # -----------------------------------------
 
             return render_template(
-                "adoptions/solicitar.html",
+                "Adoptions/solicitar.html",
                 animal=animal,
             )
 
@@ -175,6 +178,9 @@ def registrar_rutas_adopciones(app, supabase):
 
         if not user_id:
             return redirect(url_for("login"))
+
+        if session.get("user_role") != "adoptante":
+            return redirect(url_for("inicio"))
 
         if not supabase:
             return "Base de datos no disponible", 500
@@ -209,7 +215,7 @@ def registrar_rutas_adopciones(app, supabase):
             )
 
             return render_template(
-                "adoptions/solicitudes.html",
+                "Adoptions/solicitudes.html",
                 solicitudes=respuesta.data,
             )
 
@@ -234,6 +240,9 @@ def registrar_rutas_adopciones(app, supabase):
 
         if not user_id:
             return redirect(url_for("login"))
+
+        if session.get("user_role") != "adoptante":
+            return redirect(url_for("inicio"))
 
         try:
 

@@ -1,9 +1,11 @@
-"""Módulo de Administración e Integración para Tralaladopt.
+"""Módulo de administración para Tralaladopt.
 
-Maneja el panel de control, aprobación de fundaciones y métricas del sistema.
+Maneja las métricas del panel y la aprobación de cuentas de fundación usando
+el esquema actual de Supabase (users, animales y solicitudes_adopcion).
 """
 
 import os
+
 from dotenv import load_dotenv
 from supabase import Client, create_client
 
@@ -21,8 +23,21 @@ if SUPABASE_URL and SUPABASE_KEY:
         print(f"Advertencia: No se pudo conectar a Supabase: {err}")
 
 
+def _contar(tabla: str, filtros: list[tuple[str, str]] | None = None) -> int:
+    """Cuenta filas de una tabla aplicando filtros de igualdad opcionales."""
+    if not supabase:
+        return 0
+
+    consulta = supabase.table(tabla).select("id", count="exact")
+    for campo, valor in filtros or []:
+        consulta = consulta.eq(campo, valor)
+
+    respuesta = consulta.execute()
+    return respuesta.count or 0
+
+
 def obtener_estadisticas_panel():
-    """Obtiene métricas y conteos generales para el panel administrativo."""
+    """Obtiene métricas generales para el panel administrativo."""
     if not supabase:
         return {
             "total_usuarios": 0,
@@ -32,42 +47,20 @@ def obtener_estadisticas_panel():
         }
 
     try:
-        total_usuarios = (
-            supabase.table("users")
-            .select("id", count="exact")
-            .execute()
-            .count
-        )
-        total_animales = (
-            supabase.table("animals")
-            .select("id", count="exact")
-            .execute()
-            .count
-        )
-        solicitudes_pendientes = (
-            supabase.table("adoption_requests")
-            .select("id", count="exact")
-            .eq("status", "Pendiente")
-            .execute()
-            .count
-        )
-        fundaciones_pendientes = (
-            supabase.table("users")
-            .select("id", count="exact")
-            .eq("role", "fundacion")
-            .eq("status", "pendiente")
-            .execute()
-            .count
-        )
-
         return {
-            "total_usuarios": total_usuarios or 0,
-            "total_animales": total_animales or 0,
-            "solicitudes_pendientes": solicitudes_pendientes or 0,
-            "fundaciones_pendientes": fundaciones_pendientes or 0,
+            "total_usuarios": _contar("users"),
+            "total_animales": _contar("animales"),
+            "solicitudes_pendientes": _contar(
+                "solicitudes_adopcion",
+                [("estado", "pendiente")],
+            ),
+            "fundaciones_pendientes": _contar(
+                "users",
+                [("rol", "fundacion"), ("estado", "pendiente")],
+            ),
         }
-    except Exception as e:
-        print(f"Error al obtener estadísticas: {e}")
+    except Exception as err:
+        print(f"Error al obtener estadísticas: {err}")
         return {
             "total_usuarios": 0,
             "total_animales": 0,
@@ -82,21 +75,22 @@ def obtener_fundaciones_pendientes():
         return []
 
     try:
-        response = (
+        respuesta = (
             supabase.table("users")
-            .select("*")
-            .eq("role", "fundacion")
-            .eq("status", "pendiente")
+            .select("id,nombre,email,ubicacion,estado")
+            .eq("rol", "fundacion")
+            .eq("estado", "pendiente")
+            .order("nombre")
             .execute()
         )
-        return response.data
-    except Exception as e:
-        print(f"Error al obtener fundaciones pendientes: {e}")
+        return respuesta.data or []
+    except Exception as err:
+        print(f"Error al obtener fundaciones pendientes: {err}")
         return []
 
 
 def cambiar_estado_fundacion(fundacion_id: str, nuevo_estado: str):
-    """Aprueba ('activo'), rechaza o suspende una cuenta de fundación."""
+    """Actualiza el estado de una fundación y registra una notificación."""
     if not supabase:
         return {"exito": False, "error": "Sin conexión a Supabase"}
 
@@ -105,25 +99,32 @@ def cambiar_estado_fundacion(fundacion_id: str, nuevo_estado: str):
         raise ValueError("Estado no válido para la fundación.")
 
     try:
-        response = (
+        respuesta = (
             supabase.table("users")
-            .update({"status": nuevo_estado})
+            .update({"estado": nuevo_estado})
             .eq("id", fundacion_id)
+            .eq("rol", "fundacion")
             .execute()
         )
 
-        supabase.table("notifications").insert(
-            {
-                "user_id": fundacion_id,
-                "message": (
-                    "El estado de tu cuenta de fundación ha sido"
-                    f" actualizado a: {nuevo_estado}."
-                ),
-                "type": "admin",
-            }
-        ).execute()
+        if not respuesta.data:
+            return {"exito": False, "error": "No se encontró la fundación."}
 
-        return {"exito": True, "data": response.data}
-    except Exception as e:
-        return {"exito": False, "error": str(e)}
-    
+        try:
+            supabase.table("notificaciones").insert(
+                {
+                    "usuario_id": fundacion_id,
+                    "mensaje": (
+                        "El estado de tu cuenta de fundación cambió a: "
+                        f"{nuevo_estado}."
+                    ),
+                    "tipo": "admin",
+                }
+            ).execute()
+        except Exception as err:
+            # La aprobación no debe fallar solo porque falle la notificación.
+            print(f"No se pudo guardar la notificación: {err}")
+
+        return {"exito": True, "data": respuesta.data}
+    except Exception as err:
+        return {"exito": False, "error": str(err)}

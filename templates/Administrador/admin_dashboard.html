@@ -2,49 +2,94 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Panel de Administración - Tralaladopt</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración | Tralaladopt</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
-<body>
-    <h1>Panel Administrativo</h1>
+<body class="page-admin">
 
-    <h2>Métricas Generales</h2>
-    <ul>
-        <li><strong>Total Usuarios:</strong> {{ stats.total_usuarios }}</li>
-        <li><strong>Mascotas Registradas:</strong> {{ stats.total_animales }}</li>
-        <li><strong>Solicitudes Pendientes:</strong> {{ stats.solicitudes_pendientes }}</li>
-        <li><strong>Fundaciones por Aprobar:</strong> {{ stats.fundaciones_pendientes }}</li>
-    </ul>
+    <div class="page-toolbar">
+        <div>
+            <p class="eyebrow">TRALALADOPT</p>
+            <h1>Panel Administrativo</h1>
+        </div>
+        <div class="page-toolbar-actions">
+            <a class="btn btn-suave" href="{{ url_for('inicio') }}">← Volver al inicio</a>
+            <a class="btn" href="{{ url_for('fundaciones.pendientes') }}">Gestionar aprobaciones</a>
+        </div>
+    </div>
 
-    <hr>
+    <section class="admin-metricas" aria-label="Métricas generales">
+        <article class="admin-metrica">
+            <span>Total usuarios</span>
+            <strong>{{ stats.total_usuarios }}</strong>
+        </article>
+        <article class="admin-metrica">
+            <span>Mascotas registradas</span>
+            <strong>{{ stats.total_animales }}</strong>
+        </article>
+        <article class="admin-metrica">
+            <span>Solicitudes pendientes</span>
+            <strong>{{ stats.solicitudes_pendientes }}</strong>
+        </article>
+        <article class="admin-metrica admin-metrica-destacada">
+            <span>Fundaciones por aprobar</span>
+            <strong>{{ stats.fundaciones_pendientes }}</strong>
+            {% if stats.fundaciones_pendientes > 0 %}
+                <a href="{{ url_for('fundaciones.pendientes') }}">Revisar ahora →</a>
+            {% endif %}
+        </article>
+    </section>
 
-    <h2>Fundaciones Pendientes de Aprobación</h2>
-    {% if fundaciones %}
-        <table border="1" cellpadding="8">
-            <thead>
-                <tr>
-                    <th>Nombre</th>
-                    <th>Email</th>
-                    <th>Ubicación</th>
-                    <th>Acción</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for f in fundaciones %}
-                <tr>
-                    <td>{{ f.name }}</td>
-                    <td>{{ f.email }}</td>
-                    <td>{{ f.location }}</td>
-                    <td>
-                        <form method="POST" action="/admin/aprobar-fundacion/{{ f.id }}" style="display:inline;">
-                            <button type="submit">Aprobar Fundación</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p>No hay fundaciones pendientes por revisar.</p>
-    {% endif %}
+    <section class="admin-seccion">
+        <div class="admin-seccion-encabezado">
+            <div>
+                <p class="eyebrow">APROBACIONES</p>
+                <h2>Fundaciones pendientes</h2>
+                <p>Estas solicitudes están esperando revisión administrativa.</p>
+            </div>
+            <a class="btn secundario" href="{{ url_for('fundaciones.pendientes') }}">
+                Abrir panel de aprobaciones
+            </a>
+        </div>
+
+        {% if fundaciones %}
+            <div class="tabla-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Ubicación</th>
+                            <th>Estado</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in fundaciones %}
+                        <tr>
+                            <td>{{ f.nombre }}</td>
+                            <td>{{ f.email }}</td>
+                            <td>{{ f.ubicacion or '—' }}</td>
+                            <td>
+                                <span class="estado estado-pendiente">Pendiente</span>
+                            </td>
+                            <td>
+                                <a class="btn btn-tabla" href="{{ url_for('fundaciones.pendientes') }}">
+                                    Revisar
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="vacio">
+                No hay fundaciones pendientes por revisar.
+            </div>
+        {% endif %}
+    </section>
+
 </body>
 </html>

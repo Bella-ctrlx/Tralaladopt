@@ -1,16 +1,17 @@
 """Módulo de fundaciones y donaciones de Tralaladopt.
 
-Incluye el registro de fundaciones (quedan pendientes de aprobación), la
-aprobación o rechazo por parte del administrador, el registro de donaciones
-y la consulta del historial. La conexión a Supabase se reutiliza de
-``modules.admin``.
+Reglas de acceso:
+- Visitante: puede enviar una solicitud para registrar una fundación.
+- Adoptante: puede ver fundaciones activas y donar.
+- Fundación: puede ver fundaciones y solo el historial de donaciones de su cuenta.
+- Administrador: puede ver fundaciones y aprobar/rechazar solicitudes; no dona.
 """
 
 import re
 from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
-from flask import Blueprint, render_template, request
+from flask import Blueprint, redirect, render_template, request, session, url_for
 
 from modules.admin import supabase
 
@@ -20,7 +21,7 @@ TABLA_USUARIOS = "users"
 TABLA_DONACIONES = "donaciones"
 TABLA_NOTIFICACIONES = "notificaciones"
 
-MONTO_MAXIMO = Decimal("99999999.99")  # límite de NUMERIC(10, 2)
+MONTO_MAXIMO = Decimal("99999999.99")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 MSG_SIN_BD = "El servicio de base de datos no está disponible."
 MSG_ERROR_BD = "No se pudo completar la operación. Inténtalo más tarde."
@@ -28,12 +29,10 @@ ESTADOS_ACCION = {"aprobar": "activo", "rechazar": "rechazado"}
 
 
 def _texto(datos, campo: str) -> str:
-    """Devuelve el valor del campo sin espacios sobrantes (o cadena vacía)."""
     return str(datos.get(campo) or "").strip()
 
 
 def _es_uuid(valor: str) -> bool:
-    """Indica si el texto tiene formato UUID válido."""
     try:
         UUID(valor)
         return True
@@ -41,28 +40,45 @@ def _es_uuid(valor: str) -> bool:
         return False
 
 
+def _rol_actual() -> str:
+    rol = str(session.get("user_role") or "").strip().lower()
+    return "administrador" if rol == "admin" else rol
+
+
+def _usuario_actual() -> dict | None:
+    """Obtiene la fila del usuario conectado a partir de session['user_id']."""
+    user_id = session.get("user_id")
+    if not user_id or not supabase:
+        return None
+    try:
+        respuesta = (
+            supabase.table(TABLA_USUARIOS)
+            .select("id,nombre,email,rol,estado")
+            .eq("id", user_id)
+            .single()
+            .execute()
+        )
+        return respuesta.data
+    except Exception as err:
+        print(f"Error al obtener usuario actual en fundaciones: {err}")
+        return None
+
+
 def validar_fundacion(datos) -> tuple[dict, list[str]]:
-    """Valida y limpia los datos de registro de una fundación.
-
-    Args:
-        datos: Mapa con nombre, email, biografia, ubicacion, telefono
-            y sitio_web.
-
-    Returns:
-        Tupla (datos_limpios, errores). Si ``errores`` está vacía los datos
-        son válidos.
-    """
     campos = (
         "nombre", "email", "biografia", "ubicacion", "telefono", "sitio_web"
     )
     limpio = {campo: _texto(datos, campo) for campo in campos}
     errores = []
+
     if not limpio["nombre"]:
         errores.append("El nombre de la fundación es obligatorio.")
     elif len(limpio["nombre"]) > 100:
         errores.append("El nombre no puede superar los 100 caracteres.")
+
     if not EMAIL_RE.match(limpio["email"]) or len(limpio["email"]) > 100:
         errores.append("Ingresa un correo electrónico válido (máx. 100).")
+
     if len(limpio["ubicacion"]) > 100:
         errores.append("La ubicación no puede superar los 100 caracteres.")
     if len(limpio["telefono"]) > 20:
@@ -71,18 +87,11 @@ def validar_fundacion(datos) -> tuple[dict, list[str]]:
         errores.append("El sitio web no puede superar los 150 caracteres.")
     if len(limpio["biografia"]) > 1000:
         errores.append("La descripción no puede superar los 1000 caracteres.")
+
     return limpio, errores
 
 
 def validar_donacion(datos) -> tuple[dict, list[str]]:
-    """Valida y limpia los datos de una donación.
-
-    Args:
-        datos: Mapa con fundacion_id, monto, mensaje y correo_donante.
-
-    Returns:
-        Tupla (datos_limpios, errores). ``monto`` se devuelve como Decimal.
-    """
     limpio = {
         "fundacion_id": _texto(datos, "fundacion_id"),
         "mensaje": _texto(datos, "mensaje"),
@@ -90,6 +99,7 @@ def validar_donacion(datos) -> tuple[dict, list[str]]:
         "monto": None,
     }
     errores = []
+
     if not _es_uuid(limpio["fundacion_id"]):
         errores.append("Selecciona una fundación válida.")
     if not EMAIL_RE.match(limpio["correo_donante"]):
@@ -108,21 +118,14 @@ def validar_donacion(datos) -> tuple[dict, list[str]]:
             limpio["monto"] = monto
     except (InvalidOperation, ValueError):
         errores.append("El monto debe ser un número (ejemplo: 25.50).")
+
     return limpio, errores
 
 
 def registrar_fundacion(datos: dict) -> dict:
-    """Registra una fundación con estado 'pendiente'.
-
-    Args:
-        datos: Datos ya validados con ``validar_fundacion``.
-
-    Returns:
-        Diccionario con ``exito`` y, si falla, ``error`` con un mensaje
-        apto para mostrar a la persona usuaria.
-    """
     if not supabase:
         return {"exito": False, "error": MSG_SIN_BD}
+
     try:
         existe = (
             supabase.table(TABLA_USUARIOS)
@@ -132,19 +135,20 @@ def registrar_fundacion(datos: dict) -> dict:
         )
         if existe.data:
             return {"exito": False, "error": "Ese correo ya está registrado."}
+
         fila = {clave: valor or None for clave, valor in datos.items()}
         fila.update({"rol": "fundacion", "estado": "pendiente"})
         supabase.table(TABLA_USUARIOS).insert(fila).execute()
         return {"exito": True}
-    except Exception as err:  # error de red, permisos o esquema
+    except Exception as err:
         print(f"Error al registrar fundación: {err}")
         return {"exito": False, "error": MSG_ERROR_BD}
 
 
 def _listar_fundaciones(estado: str, columnas: str) -> list[dict]:
-    """Devuelve las fundaciones en el estado indicado, ordenadas por nombre."""
     if not supabase:
         return []
+
     try:
         respuesta = (
             supabase.table(TABLA_USUARIOS)
@@ -161,34 +165,23 @@ def _listar_fundaciones(estado: str, columnas: str) -> list[dict]:
 
 
 def listar_fundaciones_activas() -> list[dict]:
-    """Devuelve las fundaciones aprobadas."""
     return _listar_fundaciones(
-        "activo", "id, nombre, ubicacion, biografia, sitio_web"
+        "activo", "id,nombre,email,ubicacion,biografia,sitio_web"
     )
 
 
 def listar_fundaciones_pendientes() -> list[dict]:
-    """Devuelve las fundaciones que esperan aprobación."""
-    return _listar_fundaciones("pendiente", "id, nombre, email, ubicacion")
+    return _listar_fundaciones(
+        "pendiente", "id,nombre,email,ubicacion,fecha_creacion"
+    )
 
 
 def cambiar_estado_fundacion(id_fundacion: str, accion: str) -> dict:
-    """Aprueba o rechaza una fundación pendiente y le envía una notificación.
-
-    Args:
-        id_fundacion: UUID de la fundación.
-        accion: ``"aprobar"`` o ``"rechazar"``.
-
-    Returns:
-        Diccionario con ``exito`` y, si falla, ``error``.
-
-    Raises:
-        ValueError: Si la acción no es válida o el id no es un UUID.
-    """
     if accion not in ESTADOS_ACCION or not _es_uuid(id_fundacion):
         raise ValueError("Solicitud no válida.")
     if not supabase:
         return {"exito": False, "error": MSG_SIN_BD}
+
     estado = ESTADOS_ACCION[accion]
     try:
         respuesta = (
@@ -203,6 +196,7 @@ def cambiar_estado_fundacion(id_fundacion: str, accion: str) -> dict:
     except Exception as err:
         print(f"Error al cambiar estado de fundación: {err}")
         return {"exito": False, "error": MSG_ERROR_BD}
+
     _notificar(
         id_fundacion,
         f"El estado de tu cuenta de fundación cambió a: {estado}.",
@@ -212,7 +206,8 @@ def cambiar_estado_fundacion(id_fundacion: str, accion: str) -> dict:
 
 
 def _notificar(usuario_id: str, mensaje: str, tipo: str) -> None:
-    """Guarda una notificación; si falla solo se registra en consola."""
+    if not supabase:
+        return
     try:
         supabase.table(TABLA_NOTIFICACIONES).insert(
             {"usuario_id": usuario_id, "mensaje": mensaje, "tipo": tipo}
@@ -222,16 +217,9 @@ def _notificar(usuario_id: str, mensaje: str, tipo: str) -> None:
 
 
 def registrar_donacion(datos: dict) -> dict:
-    """Guarda una donación después de comprobar fundación y donante.
-
-    Args:
-        datos: Datos ya validados con ``validar_donacion``.
-
-    Returns:
-        Diccionario con ``exito`` y, si falla, ``error``.
-    """
     if not supabase:
         return {"exito": False, "error": MSG_SIN_BD}
+
     try:
         fundacion = (
             supabase.table(TABLA_USUARIOS)
@@ -246,7 +234,7 @@ def registrar_donacion(datos: dict) -> dict:
 
         donante = (
             supabase.table(TABLA_USUARIOS)
-            .select("id")
+            .select("id,rol")
             .eq("email", datos["correo_donante"])
             .execute()
         )
@@ -254,6 +242,11 @@ def registrar_donacion(datos: dict) -> dict:
             return {
                 "exito": False,
                 "error": "No hay una cuenta con el correo del donante.",
+            }
+        if donante.data[0].get("rol") != "adoptante":
+            return {
+                "exito": False,
+                "error": "Solo las cuentas adoptantes pueden realizar donaciones.",
             }
 
         supabase.table(TABLA_DONACIONES).insert(
@@ -267,6 +260,7 @@ def registrar_donacion(datos: dict) -> dict:
     except Exception as err:
         print(f"Error al registrar donación: {err}")
         return {"exito": False, "error": MSG_ERROR_BD}
+
     _notificar(
         datos["fundacion_id"],
         f"Recibiste una donación de {datos['monto']}.",
@@ -276,12 +270,11 @@ def registrar_donacion(datos: dict) -> dict:
 
 
 def _nombres_usuarios(ids: list[str]) -> dict:
-    """Devuelve un diccionario id -> nombre para los usuarios dados."""
-    if not ids:
+    if not ids or not supabase:
         return {}
     respuesta = (
         supabase.table(TABLA_USUARIOS)
-        .select("id, nombre")
+        .select("id,nombre")
         .in_("id", list(set(ids)))
         .execute()
     )
@@ -289,23 +282,16 @@ def _nombres_usuarios(ids: list[str]) -> dict:
 
 
 def obtener_historial(email: str = "", fundacion_id: str = "") -> dict:
-    """Consulta el historial de donaciones por donante o por fundación.
-
-    Args:
-        email: Correo del donante (opcional).
-        fundacion_id: UUID de la fundación (opcional).
-
-    Returns:
-        Diccionario con ``exito`` y ``datos`` (lista) o ``error``.
-    """
     if not supabase:
         return {"exito": False, "error": MSG_SIN_BD}
     if not email and not fundacion_id:
         return {"exito": False, "error": "Indica un correo o una fundación."}
     if fundacion_id and not _es_uuid(fundacion_id):
         return {"exito": False, "error": "La fundación indicada no es válida."}
+
     try:
         consulta = supabase.table(TABLA_DONACIONES).select("*")
+
         if email:
             donante = (
                 supabase.table(TABLA_USUARIOS)
@@ -316,8 +302,10 @@ def obtener_historial(email: str = "", fundacion_id: str = "") -> dict:
             if not donante.data:
                 return {"exito": True, "datos": []}
             consulta = consulta.eq("donante_id", donante.data[0]["id"])
+
         if fundacion_id:
             consulta = consulta.eq("fundacion_id", fundacion_id)
+
         filas = (
             consulta.order("fecha_creacion", desc=True).limit(100).execute()
         ).data or []
@@ -341,7 +329,6 @@ def obtener_historial(email: str = "", fundacion_id: str = "") -> dict:
 
 
 def _pagina(seccion: str, **contexto):
-    """Renderiza la plantilla única con valores por defecto."""
     base = {
         "seccion": seccion,
         "errores": [],
@@ -350,6 +337,8 @@ def _pagina(seccion: str, **contexto):
         "fundaciones": [],
         "pendientes": [],
         "historial": None,
+        "usuario_actual": _usuario_actual(),
+        "rol_actual": _rol_actual(),
     }
     base.update(contexto)
     return render_template("Fundations/fundaciones.html", **base)
@@ -357,74 +346,124 @@ def _pagina(seccion: str, **contexto):
 
 @fundaciones_bp.route("/")
 def listado():
-    """Muestra las fundaciones activas."""
+    """Todos los usuarios autenticados pueden ver fundaciones activas."""
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
     return _pagina("listado", fundaciones=listar_fundaciones_activas())
 
 
 @fundaciones_bp.route("/registro", methods=["GET", "POST"])
 def registro():
-    """Formulario de registro de una fundación (queda pendiente)."""
+    """Solicitud pública de alta de fundación; no disponible con sesión activa."""
+    if session.get("user_id"):
+        return redirect(url_for("inicio"))
+
     if request.method == "GET":
         return _pagina("registro")
+
     limpio, errores = validar_fundacion(request.form)
     if not errores:
         resultado = registrar_fundacion(limpio)
         if resultado["exito"]:
             return _pagina(
                 "registro",
-                mensaje="Registro recibido. Un administrador lo revisará.",
+                mensaje=(
+                    "Registro recibido. Tu cuenta quedó pendiente y un "
+                    "administrador deberá aprobarla antes de iniciar sesión."
+                ),
             )
         errores.append(resultado["error"])
+
     return _pagina("registro", errores=errores, form=limpio)
 
 
 @fundaciones_bp.route("/donar", methods=["GET", "POST"])
 def donar():
-    """Formulario para donar a una fundación activa."""
+    """Solo los adoptantes autenticados pueden donar."""
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+    if _rol_actual() != "adoptante":
+        return redirect(url_for("inicio"))
+
+    usuario = _usuario_actual()
+    if not usuario:
+        return redirect(url_for("login"))
+
     fundaciones = listar_fundaciones_activas()
+    form_inicial = {"correo_donante": usuario.get("email", "")}
+
     if request.method == "GET":
-        return _pagina("donar", fundaciones=fundaciones)
-    limpio, errores = validar_donacion(request.form)
+        return _pagina(
+            "donar",
+            fundaciones=fundaciones,
+            form=form_inicial,
+            usuario_actual=usuario,
+        )
+
+    datos_form = request.form.to_dict()
+    # El correo del donante siempre sale de la sesión, no de un valor editable.
+    datos_form["correo_donante"] = usuario.get("email", "")
+    limpio, errores = validar_donacion(datos_form)
+
     if not errores:
         resultado = registrar_donacion(limpio)
         if resultado["exito"]:
             return _pagina(
-                "donar", fundaciones=fundaciones, mensaje="¡Donación registrada!"
+                "donar",
+                fundaciones=fundaciones,
+                form=form_inicial,
+                usuario_actual=usuario,
+                mensaje="¡Donación registrada correctamente!",
             )
         errores.append(resultado["error"])
+
     return _pagina(
-        "donar", fundaciones=fundaciones, errores=errores, form=request.form
+        "donar",
+        fundaciones=fundaciones,
+        errores=errores,
+        form=datos_form,
+        usuario_actual=usuario,
     )
 
 
 @fundaciones_bp.route("/historial")
 def historial():
-    """Historial de donaciones filtrado por donante o fundación."""
-    fundaciones = listar_fundaciones_activas()
-    email = _texto(request.args, "email")
-    fundacion_id = _texto(request.args, "fundacion_id")
-    if not email and not fundacion_id:
-        return _pagina("historial", fundaciones=fundaciones)
-    resultado = obtener_historial(email, fundacion_id)
+    """Una fundación solo ve las donaciones recibidas por su propia cuenta."""
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+    if _rol_actual() != "fundacion":
+        return redirect(url_for("inicio"))
+
+    fundacion_id = str(session.get("user_id"))
+    resultado = obtener_historial(fundacion_id=fundacion_id)
     errores = [] if resultado["exito"] else [resultado["error"]]
+
     return _pagina(
         "historial",
-        fundaciones=fundaciones,
         errores=errores,
-        form=request.args,
-        historial=resultado.get("datos"),
+        historial=resultado.get("datos", []),
     )
 
 
 @fundaciones_bp.route("/pendientes")
 def pendientes():
-    """Lista las fundaciones pendientes para aprobar o rechazar."""
+    """Solo el administrador puede revisar fundaciones pendientes."""
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+    if _rol_actual() != "administrador":
+        return redirect(url_for("inicio"))
+
     return _pagina("pendientes", pendientes=listar_fundaciones_pendientes())
 
 
 @fundaciones_bp.route("/pendientes/<id_fundacion>/<accion>", methods=["POST"])
 def resolver_pendiente(id_fundacion: str, accion: str):
-    """Aprueba o rechaza una fundación pendiente."""
+    """Solo el administrador puede aprobar o rechazar una fundación."""
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+    if _rol_actual() != "administrador":
+        return redirect(url_for("inicio"))
+
     errores, mensaje = [], ""
     try:
         resultado = cambiar_estado_fundacion(id_fundacion, accion)
@@ -434,6 +473,7 @@ def resolver_pendiente(id_fundacion: str, accion: str):
             errores.append(resultado["error"])
     except ValueError as err:
         errores.append(str(err))
+
     return _pagina(
         "pendientes",
         errores=errores,

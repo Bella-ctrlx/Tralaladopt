@@ -65,6 +65,11 @@ def iniciar_sesion(email):
                     "exito": False,
                     "error": "Tu cuenta de fundación está pendiente de aprobación.",
                 }
+            if usuario.get("estado") == "rechazado":
+                return {
+                    "exito": False,
+                    "error": "La solicitud de esta fundación fue rechazada.",
+                }
             return {"exito": True, "usuario": usuario}
         return {
             "exito": False,
