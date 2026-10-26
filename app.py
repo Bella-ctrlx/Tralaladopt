@@ -11,15 +11,19 @@ from flask import (
 )
 from supabase import Client, create_client
 
-
 # MÓDULOS DEL PROYECTO
-
 # Administración - Integrante 5
 from modules.admin import (
     cambiar_estado_fundacion,
     obtener_estadisticas_panel,
     obtener_fundaciones_pendientes,
 )
+
+# Solicitudes de adopción - Integrante 2
+from modules.adoption_requests import registrar_rutas_adopciones
+
+# Animales - Integrante 2
+from modules.animals import registrar_rutas_animales
 
 # Autenticación
 from modules.auth import (
@@ -28,18 +32,11 @@ from modules.auth import (
     registrar_usuario,
 )
 
-# Fundaciones - Integrante 4
-from modules.fundaciones import fundaciones_bp
-
-# Animales - Integrante 2
-from modules.animals import registrar_rutas_animales
-
-# Solicitudes de adopción - Integrante 2
-from modules.adoption_requests import registrar_rutas_adopciones
-
 # Favoritos - Integrante 2
 from modules.favorites import registrar_rutas_favoritos
 
+# Fundaciones - Integrante 4
+from modules.fundaciones import fundaciones_bp
 
 # CONFIGURACIÓN
 
