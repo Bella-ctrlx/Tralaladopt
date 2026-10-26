@@ -9,7 +9,6 @@ from flask import (
     url_for,
 )
 
-
 # CONFIGURACIÓN
 
 CAMPOS_PERMITIDOS = {

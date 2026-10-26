@@ -1,0 +1,7 @@
+[lint]
+extend-ignore = [
+    "BLE001",
+    "ISC004",
+    "SIM102",
+    "SIM103",
+]
